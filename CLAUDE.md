@@ -25,8 +25,8 @@ Read the following to get the full context of the project:
 
 When using the Neon MCP tools, always target:
 
-- **Project:** `task-master` (ID: _fill in after the Neon project is created_)
-- **Branch:** `development` (ID: _fill in_)
+- **Project:** `task-master` (ID: `flat-sky-70708476`)
+- **Branch:** `development` (ID: `br-winter-water-arg7xroi`)
 
 Rules:
 
