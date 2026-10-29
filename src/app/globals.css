@@ -1,0 +1,145 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+  --font-heading: var(--font-plex-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-ink: var(--primary-ink);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-ink: var(--success-ink);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.2);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Tokens from context/mockup/README.md. --accent is shadcn's hover color (sunken), not our blue. */
+:root {
+  --radius: 0.625rem;
+
+  --background: #f4f6f9;
+  --foreground: #141922;
+  --card: #ffffff;
+  --card-foreground: #141922;
+  --popover: #ffffff;
+  --popover-foreground: #141922;
+  --primary: #1d5bd6;
+  --primary-foreground: #ffffff;
+  --primary-text: #1a55c9;
+  --primary-soft: #e6eefc;
+  --primary-ink: #173f8c;
+  --secondary: #edf0f4;
+  --secondary-foreground: #141922;
+  --muted: #edf0f4;
+  --muted-foreground: #576072;
+  --accent: #edf0f4;
+  --accent-foreground: #141922;
+  --success: #1f8a52;
+  --success-foreground: #ffffff;
+  --success-soft: #e2f3e9;
+  --success-ink: #17643c;
+  --warning: #a3510b;
+  --destructive: #a3510b;
+  --border: #dfe3ea;
+  --input: #dfe3ea;
+  --ring: #1d5bd6;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #141922;
+  --sidebar-primary: #1d5bd6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e6eefc;
+  --sidebar-accent-foreground: #173f8c;
+  --sidebar-border: #dfe3ea;
+  --sidebar-ring: #1d5bd6;
+}
+
+.dark {
+  --background: #0d1015;
+  --foreground: #e5e8ed;
+  --card: #141920;
+  --card-foreground: #e5e8ed;
+  --popover: #141920;
+  --popover-foreground: #e5e8ed;
+  --primary: #2d64d8;
+  --primary-foreground: #ffffff;
+  --primary-text: #8ab0ff;
+  --primary-soft: #172540;
+  --primary-ink: #b3cbff;
+  --secondary: #1b2129;
+  --secondary-foreground: #e5e8ed;
+  --muted: #1b2129;
+  --muted-foreground: #9ba5b4;
+  --accent: #1b2129;
+  --accent-foreground: #e5e8ed;
+  --success: #3dbe7b;
+  --success-foreground: #06140c;
+  --success-soft: #12291d;
+  --success-ink: #86ddb0;
+  --warning: #efa35f;
+  --destructive: #efa35f;
+  --border: #29303b;
+  --input: #29303b;
+  --ring: #2d64d8;
+
+  --sidebar: #141920;
+  --sidebar-foreground: #e5e8ed;
+  --sidebar-primary: #2d64d8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #172540;
+  --sidebar-accent-foreground: #b3cbff;
+  --sidebar-border: #29303b;
+  --sidebar-ring: #2d64d8;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
