@@ -31,6 +31,7 @@
   --color-success-soft: var(--success-soft);
   --color-success-ink: var(--success-ink);
   --color-warning: var(--warning);
+  --color-brand-check: var(--brand-check);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -83,6 +84,7 @@
   --border: #dfe3ea;
   --input: #dfe3ea;
   --ring: #1d5bd6;
+  --brand-check: #7fe0aa;
 
   --sidebar: #ffffff;
   --sidebar-foreground: #141922;
