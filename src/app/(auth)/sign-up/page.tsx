@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthSwitchLink } from "@/components/auth/AuthSwitchLink";
+import { GoogleButton } from "@/components/auth/GoogleButton";
+import { OrDivider } from "@/components/auth/OrDivider";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { safeCallbackUrl } from "@/lib/safe-callback-url";
 
@@ -16,6 +18,8 @@ export default async function SignUpPage({ searchParams }: PageProps<"/sign-up">
   return (
     <>
       <AuthCard title="Create an account" description="Plan your days and review your weeks.">
+        <GoogleButton callbackURL={safeUrl} />
+        <OrDivider />
         <SignUpForm callbackURL={safeUrl} />
       </AuthCard>
       <AuthSwitchLink

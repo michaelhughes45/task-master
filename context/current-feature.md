@@ -1,18 +1,27 @@
-# Current Feature
+# Current Feature: Auth Google (04)
 
-<!-- Feature name and short description -->
+Add Google as a second way to sign in and sign up, alongside email and password.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+Complete
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `socialProviders.google` configured in `src/lib/auth.ts` (`src/lib/env.ts` does not exist yet, so it reads `process.env` like `prisma.ts`)
+- "Continue with Google" button (neutral outlined, small Google "G" mark) at the top of `/sign-in` and `/sign-up`, with an "or" divider as in the mockup
+- Safe `callbackURL` passed through, defaulting to `/today`
+- Account linking: Google sign-in with the same email as an existing password account links only if Google reports the email as verified (`accountLinking: { enabled: true }` without `trustedProviders`, since in 1.7.14 a trusted provider links even unverified emails; Better Auth's default `requireLocalEmailVerified` also stays on, so linking waits for spec 05)
+- Google users get `timezone` = null (spec 06 fills it from the browser)
+- Friendly error on `/sign-in` when Google sign-in fails or is cancelled (Better Auth's error query param)
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env.example`
 
 ## Notes
 
-<!-- Any extra notes -->
+- **User prerequisite:** create a Google Cloud OAuth client (Web application) with JS origin `http://localhost:3000` and redirect URI `http://localhost:3000/api/auth/callback/google`, then put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`.
+- Files: `src/lib/auth.ts`, `src/components/auth/GoogleButton.tsx` (spec says `google-button.tsx`; PascalCase matches the coding standards and the other auth components), `src/app/(auth)/sign-in/page.tsx`, `src/app/(auth)/sign-up/page.tsx`.
+- Testing: Google sign-in lands on `/today` with `user` + `account` rows; same email as an existing password account → one user, two accounts; cancelling on Google's screen → back on `/sign-in` with a message; `npm run build` passes.
+- References: https://www.better-auth.com/docs/authentication/google, https://www.better-auth.com/docs/concepts/users-accounts#account-linking
 
 ## History
 
