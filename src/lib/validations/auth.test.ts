@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { signInSchema, signUpSchema } from "./auth";
+import { forgotPasswordSchema, resetPasswordSchema, signInSchema, signUpSchema } from "./auth";
 
 const validSignUp = {
   name: "Sam",
@@ -51,6 +51,37 @@ describe("signUpSchema", () => {
   it("reports mismatched passwords on confirmPassword", () => {
     const errors = fieldErrors(
       signUpSchema.safeParse({ ...validSignUp, confirmPassword: "something else" }),
+    );
+    expect(errors.confirmPassword).toEqual(["Passwords don't match"]);
+  });
+});
+
+describe("forgotPasswordSchema", () => {
+  it("normalises the email", () => {
+    expect(forgotPasswordSchema.safeParse({ email: " Sam@Example.com" }).data?.email).toBe(
+      "sam@example.com",
+    );
+  });
+
+  it("rejects an invalid email", () => {
+    expect(fieldErrors(forgotPasswordSchema.safeParse({ email: "nope" })).email).toBeDefined();
+  });
+});
+
+describe("resetPasswordSchema", () => {
+  it("accepts matching passwords of 8+ characters", () => {
+    const result = resetPasswordSchema.safeParse({ password: "a".repeat(8), confirmPassword: "a".repeat(8) });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a short password", () => {
+    const errors = fieldErrors(resetPasswordSchema.safeParse({ password: "short", confirmPassword: "short" }));
+    expect(errors.password).toBeDefined();
+  });
+
+  it("reports mismatched passwords on confirmPassword", () => {
+    const errors = fieldErrors(
+      resetPasswordSchema.safeParse({ password: "a".repeat(8), confirmPassword: "b".repeat(8) }),
     );
     expect(errors.confirmPassword).toEqual(["Passwords don't match"]);
   });

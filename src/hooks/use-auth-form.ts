@@ -3,12 +3,13 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
-type AuthResult = { error: { message?: string } | null };
+type AuthResult = { error: { message?: string; code?: string } | null };
 
 interface UseAuthFormOptions<T> {
   schema: z.ZodType<T>;
   submit: (data: T) => Promise<AuthResult>;
-  callbackURL: string;
+  // Where to go after success; null stays on the page and sets `succeeded`.
+  callbackURL: string | null;
   fallbackError: string;
 }
 
@@ -22,7 +23,9 @@ export function useAuthForm<T extends object>({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof T, string[]>>>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<{ message: string; code?: string } | null>(null);
+  const [submitted, setSubmitted] = useState<T | null>(null);
+  const [succeeded, setSucceeded] = useState(false);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,12 +37,17 @@ export function useAuthForm<T extends object>({
       return;
     }
     setFieldErrors({});
+    setSubmitted(parsed.data);
 
     startTransition(async () => {
       try {
         const { error } = await submit(parsed.data);
         if (error) {
-          setFormError(error.message ?? fallbackError);
+          setFormError({ message: error.message ?? fallbackError, code: error.code });
+          return;
+        }
+        if (callbackURL === null) {
+          setSucceeded(true);
           return;
         }
         router.replace(callbackURL);
@@ -51,5 +59,13 @@ export function useAuthForm<T extends object>({
     });
   }
 
-  return { isPending, fieldErrors, formError, handleSubmit };
+  return {
+    isPending,
+    fieldErrors,
+    formError: formError?.message ?? null,
+    errorCode: formError?.code ?? null,
+    submitted,
+    succeeded,
+    handleSubmit,
+  };
 }

@@ -12,6 +12,12 @@ export const signInSchema = z.object({
   password: z.string().min(1, "Enter your password").max(128, "Use 128 characters or fewer"),
 });
 
+const passwordsMatch = {
+  check: (data: { password: string; confirmPassword: string }) =>
+    data.password === data.confirmPassword,
+  params: { message: "Passwords don't match", path: ["confirmPassword"] },
+};
+
 export const signUpSchema = z
   .object({
     name: z.string().trim().min(1, "Enter your name").max(100, "Use 100 characters or fewer"),
@@ -19,10 +25,13 @@ export const signUpSchema = z
     password,
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
+  .refine(passwordsMatch.check, passwordsMatch.params);
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z
+  .object({ password, confirmPassword: z.string() })
+  .refine(passwordsMatch.check, passwordsMatch.params);
 
 export type SignInInput = z.infer<typeof signInSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;

@@ -2,13 +2,21 @@
 
 import { FormError } from "@/components/auth/FormError";
 import { FormField } from "@/components/auth/FormField";
+import { FormSuccess } from "@/components/auth/FormSuccess";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { useAuthForm } from "@/hooks/use-auth-form";
 import { authClient } from "@/lib/auth-client";
+import { VERIFY_EMAIL_CALLBACK_URL } from "@/lib/sign-in-notice";
 import { signUpSchema } from "@/lib/validations/auth";
 
-export function SignUpForm({ callbackURL }: { callbackURL: string }) {
-  const { isPending, fieldErrors, formError, handleSubmit } = useAuthForm({
+interface SignUpFormProps {
+  callbackURL: string;
+  // When on, sign-up creates no session; the user verifies by email first.
+  verificationRequired: boolean;
+}
+
+export function SignUpForm({ callbackURL, verificationRequired }: SignUpFormProps) {
+  const { isPending, fieldErrors, formError, succeeded, handleSubmit } = useAuthForm({
     schema: signUpSchema,
     submit: ({ name, email, password }) =>
       authClient.signUp.email({
@@ -16,10 +24,15 @@ export function SignUpForm({ callbackURL }: { callbackURL: string }) {
         email,
         password,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        callbackURL: VERIFY_EMAIL_CALLBACK_URL,
       }),
-    callbackURL,
+    callbackURL: verificationRequired ? null : callbackURL,
     fallbackError: "Couldn't create your account. Try again.",
   });
+
+  if (succeeded) {
+    return <FormSuccess message="Check your email to verify your account." />;
+  }
 
   return (
     <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
