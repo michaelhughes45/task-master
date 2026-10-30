@@ -3,9 +3,11 @@
 import { MapPin, Repeat, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { deleteEvent } from "@/actions/events";
+import { deleteEvent, deleteEventOccurrence } from "@/actions/events";
+import { EditScopeOptions } from "@/components/items/EditScopeDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import type { EditScope } from "@/lib/recurrence-edit";
 import { cn } from "@/lib/utils";
 import type { EventDetails } from "@/types/events";
 
@@ -39,11 +41,15 @@ interface EventDetailsBodyProps {
 
 function EventDetailsBody({ event, onEdit, onClose }: EventDetailsBodyProps) {
   const [confirming, setConfirming] = useState(false);
+  const [scope, setScope] = useState<EditScope>("this");
   const [isPending, startTransition] = useTransition();
+  const { occurrenceStart } = event;
 
   function handleDelete() {
     startTransition(async () => {
-      const result = await deleteEvent(event.id);
+      const result = occurrenceStart
+        ? await deleteEventOccurrence(event.id, occurrenceStart, scope)
+        : await deleteEvent(event.id);
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -91,11 +97,16 @@ function EventDetailsBody({ event, onEdit, onClose }: EventDetailsBodyProps) {
         )}
         {event.notes && <span className="whitespace-pre-line text-foreground/90">{event.notes}</span>}
       </DialogDescription>
-      {confirming && (
-        <p role="alert" className="border-t px-5 py-3.5 text-[14.5px] font-semibold">
-          Delete this event?
-        </p>
-      )}
+      {confirming &&
+        (occurrenceStart ? (
+          <div className="border-t px-5 py-3.5">
+            <EditScopeOptions legend="Delete repeating event" noun="event" value={scope} onChange={setScope} />
+          </div>
+        ) : (
+          <p role="alert" className="border-t px-5 py-3.5 text-[14.5px] font-semibold">
+            Delete this event?
+          </p>
+        ))}
       <div className="flex justify-end gap-2 border-t bg-background px-5 py-3.5">
         {confirming ? (
           <>

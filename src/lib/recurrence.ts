@@ -106,6 +106,11 @@ function taskDay(scope: TaskScope, day: DateStr) {
   return scope === "WEEKLY" ? weekStartOf(day) : day;
 }
 
+// Dates the series produced before `occurrenceDate`, oldest first, cancelled ones included.
+export function taskDatesBefore(task: TaskSeries, occurrenceDate: DateStr): DateStr[] {
+  return taskDates(task, taskDay(task.scope, task.date), addDays(occurrenceDate, -1));
+}
+
 // Whether `occurrenceDate` (a Monday for weekly tasks) is a real, not cancelled, occurrence.
 export function isTaskOccurrence(task: TaskSeries, exceptions: TaskExceptionInput[], occurrenceDate: DateStr) {
   const cancelled = exceptions.some((e) => e.occurrenceDate === occurrenceDate && e.cancelled);
@@ -219,6 +224,24 @@ function eventStarts(event: EventSeries, start: Date, end: Date, tz: string): Da
 function isEventOccurrence(event: EventSeries, occurrenceStart: Date, tz: string) {
   const starts = eventStarts(event, occurrenceStart, occurrenceStart, tz);
   return starts.some((start) => start.getTime() === occurrenceStart.getTime());
+}
+
+// The day an occurrence starting at `start` is on: the zone's day for a timed event, the UTC
+// date for an all-day one. A series repeats at most once a day, so this names an occurrence.
+export function eventDay(allDay: boolean, start: Date, tz: string): DateStr {
+  return allDay ? fromDbDate(start) : todayIn(tz, start);
+}
+
+// The series' original start on `day`, or null when it has no occurrence that day.
+export function eventStartOn(event: EventSeries, day: DateStr, tz: string): Date | null {
+  const { start, end } = rangeBounds(event.allDay, day, day, tz);
+  return eventStarts(event, start, end, tz).find((s) => eventDay(event.allDay, s, tz) === day) ?? null;
+}
+
+// Original starts of the series' occurrences before `before`, oldest first, cancelled ones
+// included.
+export function eventStartsBefore(event: EventSeries, before: Date, tz: string): Date[] {
+  return eventStarts(event, event.startAt, before, tz).filter((start) => start < before);
 }
 
 // Occurrences overlapping firstDay..lastDay (inclusive) in the user's zone, by start.

@@ -1,6 +1,6 @@
 "use client";
 
-import { EllipsisVertical, Pencil, Trash2 } from "lucide-react";
+import { CalendarDays, EllipsisVertical, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
   AlertDialog,
@@ -23,6 +23,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MoveTaskDialog } from "@/components/todos/MoveTaskDialog";
+import type { DateStr } from "@/types/dates";
 import type { Priority } from "@/types/tasks";
 
 const PRIORITIES: { value: Priority; label: string }[] = [
@@ -38,14 +40,30 @@ function isPriority(value: unknown): value is Priority {
 interface TaskRowMenuProps {
   title: string;
   priority: Priority;
+  day: DateStr;
+  // A repeating task's row asks which occurrences a change is for, which also confirms a delete.
+  repeats: boolean;
   disabled?: boolean;
   onRename: () => void;
   onPriorityChange: (priority: Priority) => void;
   onDelete: () => void;
+  // Daily tasks only.
+  onMove?: (date: DateStr) => void;
 }
 
-export function TaskRowMenu({ title, priority, disabled, onRename, onPriorityChange, onDelete }: TaskRowMenuProps) {
+export function TaskRowMenu({
+  title,
+  priority,
+  day,
+  repeats,
+  disabled,
+  onRename,
+  onPriorityChange,
+  onDelete,
+  onMove,
+}: TaskRowMenuProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   // Rename focuses the title input, so the menu mustn't hand focus back to its trigger.
   const renaming = useRef(false);
 
@@ -78,6 +96,12 @@ export function TaskRowMenu({ title, priority, disabled, onRename, onPriorityCha
             <Pencil aria-hidden="true" />
             Rename
           </DropdownMenuItem>
+          {onMove && (
+            <DropdownMenuItem className="h-9" onClick={() => setMoveOpen(true)}>
+              <CalendarDays aria-hidden="true" />
+              Move to…
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuLabel>Priority</DropdownMenuLabel>
@@ -98,7 +122,7 @@ export function TaskRowMenu({ title, priority, disabled, onRename, onPriorityCha
           <DropdownMenuItem
             variant="destructive"
             className="h-9"
-            onClick={() => setConfirmOpen(true)}
+            onClick={() => (repeats ? onDelete() : setConfirmOpen(true))}
           >
             <Trash2 aria-hidden="true" />
             Delete
@@ -129,6 +153,17 @@ export function TaskRowMenu({ title, priority, disabled, onRename, onPriorityCha
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {onMove && (
+        <MoveTaskDialog
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          title={title}
+          day={day}
+          repeats={repeats}
+          onMove={onMove}
+        />
+      )}
     </>
   );
 }

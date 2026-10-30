@@ -6,6 +6,9 @@ import type { DateStr, TaskScope } from "@/types/dates";
 // An RRULE from the Repeat select; null or missing means "Does not repeat".
 export const rruleField = z.string().max(200).nullable().optional();
 
+// Which occurrences of a repeating item an edit or delete applies to.
+export const editScopeSchema = z.enum(["this", "following", "all"]);
+
 // Adds the rule's problem (if any) under `rrule`. `day` is the date picked in the form; a
 // weekly task's series starts on that week's Monday.
 export function checkRepeat(ctx: z.RefinementCtx, rrule: string | null | undefined, scope: TaskScope, day: DateStr) {

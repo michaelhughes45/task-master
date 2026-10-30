@@ -67,6 +67,7 @@ describe("toTaskView", () => {
       doneLate: false,
       minutesSpent: null,
       workNote: null,
+      repeats: false,
       repeatLabel: null,
     });
   });

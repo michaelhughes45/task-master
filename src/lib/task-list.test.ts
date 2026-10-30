@@ -23,6 +23,7 @@ function task(overrides: Partial<TaskView> = {}): TaskView {
     doneLate: false,
     minutesSpent: null,
     workNote: null,
+    repeats: false,
     repeatLabel: null,
     ...overrides,
   };
@@ -95,6 +96,27 @@ describe("applyTaskChange", () => {
     const occurrences = [task({ occurrenceDate: "2026-10-26" }), task({ occurrenceDate: "2026-10-27" })];
     const result = applyTaskChange(occurrences, { type: "update", id: "t1", title: "Read 30 pages" });
     expect(result.map((t) => t.title)).toEqual(["Read 30 pages", "Read 30 pages"]);
+  });
+
+  it("limits a change to one occurrence, or to it and the ones after", () => {
+    const occurrences = ["2026-10-26", "2026-10-27", "2026-10-28"].map((d) => task({ occurrenceDate: d }));
+    const titles = (scope: "this" | "following" | "all") =>
+      applyTaskChange(occurrences, {
+        type: "update",
+        id: "t1",
+        within: { scope, occurrenceDate: "2026-10-27" },
+        title: "New",
+      }).map((t) => t.title);
+    expect(titles("this")).toEqual(["Write report", "New", "Write report"]);
+    expect(titles("following")).toEqual(["Write report", "New", "New"]);
+    expect(titles("all")).toEqual(["New", "New", "New"]);
+
+    const removed = applyTaskChange(occurrences, {
+      type: "remove",
+      id: "t1",
+      within: { scope: "following", occurrenceDate: "2026-10-27" },
+    });
+    expect(removed.map((t) => t.occurrenceDate)).toEqual(["2026-10-26"]);
   });
 
   it("ticks a task for today on time", () => {

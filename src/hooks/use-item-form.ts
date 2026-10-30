@@ -20,12 +20,15 @@ export function useItemForm<S extends z.ZodType>({ schema, action, successMessag
   const [errors, setErrors] = useState<ItemFieldErrors>({});
   const [isPending, startTransition] = useTransition();
 
-  function submit(values: z.input<S>) {
+  // Shows the schema's field errors; true when there are none.
+  function check(values: z.input<S>) {
     const parsed = schema.safeParse(values);
-    if (!parsed.success) {
-      setErrors(z.flattenError(parsed.error).fieldErrors as ItemFieldErrors);
-      return;
-    }
+    if (!parsed.success) setErrors(z.flattenError(parsed.error).fieldErrors as ItemFieldErrors);
+    return parsed.success;
+  }
+
+  function submit(values: z.input<S>) {
+    if (!check(values)) return;
     startTransition(async () => {
       const result = await action(values);
       if (result.success) {
@@ -43,5 +46,5 @@ export function useItemForm<S extends z.ZodType>({ schema, action, successMessag
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   }
 
-  return { errors, isPending, submit, clearError };
+  return { errors, isPending, submit, check, clearError };
 }
