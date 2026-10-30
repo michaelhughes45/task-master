@@ -89,7 +89,7 @@ const completionKey = (taskId: string, occurrenceDate: DateStr) => `${taskId}|${
 // Every occurrence of the user's tasks of one scope shown from firstDay to lastDay (inclusive),
 // by day, then in list order, with its completion. Loads one-off tasks in the range and every
 // repeating series that started by its end, then expands them.
-async function findOccurrences(
+export async function findOccurrences(
   userId: string,
   scope: TaskScope,
   firstDay: DateStr,

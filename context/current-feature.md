@@ -1,18 +1,37 @@
-# Current Feature
+# Current Feature: Weekly Review Calculations (19)
 
-<!-- Feature name and short description -->
+Build the weekly review numbers as a pure, tested function, plus the query that feeds it. No UI (spec 20).
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `src/lib/review.ts`: pure `computeWeeklyReview(input) → WeeklyReview`. Input: the week's task occurrences (daily and weekly, after recurrence and exceptions) with their completions, the previous week's occurrences and completions, and the user's timezone
+- **Planned** = non-cancelled occurrences in the week; each daily occurrence counts once, each weekly task once for the week
+- **Done** = planned occurrences with a completion (on time or late); **missed** = planned − done
+- **Completion rate** = done / planned, whole percent, `null` when planned is 0; plus separate **daily** and **weekly** rates
+- **Done late** = completions where `isDoneLate` is true
+- **Time tracked** = sum of `minutesSpent` (nulls ignored); **time by task** grouped by task id (series), top 5
+- **Per day**: planned and done daily occurrences Mon–Sun (weekly tasks not in the bars)
+- **Most-missed repeating tasks**: repeating tasks with ≥ 1 miss, sorted by missed count then miss ratio, top 3, with "missed X of Y"
+- **Notes**: completions with a `workNote`, in date order, with day, task title and minutes
+- **Compared with last week**: change in completion rate (percentage points) and time tracked; no comparison when the previous week has nothing planned
+- `src/lib/db/review.ts`: `getWeeklyReview(userId, weekStart, tz)` loads both weeks through the recurrence-aware queries and calls `computeWeeklyReview`; `getReviewWeeks(userId, tz)` → last 12 week starts with any planned tasks, newest first
+- Types in `src/types/review.ts`
+- Unit tests: empty week (rate null), all done, mixed with late completions, weekly tasks counted once, cancelled occurrences excluded, repeating task missed 3 of 7, previous week missing (no comparison), minutes summed with nulls
+- Sanity-check against the seed for the previous week; run `date-logic-reviewer`; `npm run build` and `npm test` pass
 
 ## Notes
 
-<!-- Any extra notes -->
+- Spec: `context/features/19-weekly-review-calc-spec.md`
+- Reuse the existing recurrence-aware loaders in `src/lib/db/tasks.ts` (`getDayTasks`, `getWeekTasks`, `toTaskView`) rather than re-expanding rules; cancelled occurrences are already dropped by `expandTask`, so `TaskView` lists only planned ones
+- `isDoneLate` lives in `src/lib/dates.ts` (daily: after the day; weekly: after Sunday of the week, in the user's zone)
+- Weeks run Monday–Sunday; use `weekStartOf`, `weekDays`, `addWeeks`; week starts and days are `DateStr`
+- `src/lib/db/review.ts` must import `server-only` and scope every query by `userId`
+- `getReviewWeeks` needs to account for repeating tasks (a series started months ago still plans tasks this week), not just rows whose `date` falls in a week
+- Open question from the overview: cancelled occurrences don't count as planned (default: no)
 
 ## History
 
