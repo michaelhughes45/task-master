@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: { default: "Task Master", template: "%s · Task Master" },
   description: "Your day, your to-dos and a weekly review in one place.",
 };
+
+// Lets the phone tab bar pad itself for the home indicator (env(safe-area-inset-bottom)).
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

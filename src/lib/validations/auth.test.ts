@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { forgotPasswordSchema, resetPasswordSchema, signInSchema, signUpSchema } from "./auth";
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  signInSchema,
+  signUpSchema,
+} from "./auth";
 
 const validSignUp = {
   name: "Sam",
@@ -83,6 +89,31 @@ describe("resetPasswordSchema", () => {
     const errors = fieldErrors(
       resetPasswordSchema.safeParse({ password: "a".repeat(8), confirmPassword: "b".repeat(8) }),
     );
+    expect(errors.confirmPassword).toEqual(["Passwords don't match"]);
+  });
+});
+
+describe("changePasswordSchema", () => {
+  const valid = { currentPassword: "old-password", password: "a".repeat(8), confirmPassword: "a".repeat(8) };
+
+  it("accepts a current password and a matching new one", () => {
+    expect(changePasswordSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("requires the current password", () => {
+    const errors = fieldErrors(changePasswordSchema.safeParse({ ...valid, currentPassword: "" }));
+    expect(errors.currentPassword).toEqual(["Enter your current password"]);
+  });
+
+  it("rejects a short new password", () => {
+    const errors = fieldErrors(
+      changePasswordSchema.safeParse({ ...valid, password: "short", confirmPassword: "short" }),
+    );
+    expect(errors.password).toBeDefined();
+  });
+
+  it("reports mismatched new passwords on confirmPassword", () => {
+    const errors = fieldErrors(changePasswordSchema.safeParse({ ...valid, confirmPassword: "b".repeat(8) }));
     expect(errors.confirmPassword).toEqual(["Passwords don't match"]);
   });
 });

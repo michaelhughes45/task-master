@@ -33,5 +33,16 @@ export const resetPasswordSchema = z
   .object({ password, confirmPassword: z.string() })
   .refine(passwordsMatch.check, passwordsMatch.params);
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(1, "Enter your current password")
+      .max(128, "Use 128 characters or fewer"),
+    password,
+    confirmPassword: z.string(),
+  })
+  .refine(passwordsMatch.check, passwordsMatch.params);
+
 export type SignInInput = z.infer<typeof signInSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;

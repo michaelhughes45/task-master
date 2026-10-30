@@ -11,6 +11,8 @@ interface UseAuthFormOptions<T> {
   // Where to go after success; null stays on the page and sets `succeeded`.
   callbackURL: string | null;
   fallbackError: string;
+  // Runs after success when callbackURL is null
+  onSuccess?: () => void;
 }
 
 // Validates the form with the shared schema, calls Better Auth, then goes to callbackURL.
@@ -19,6 +21,7 @@ export function useAuthForm<T extends object>({
   submit,
   callbackURL,
   fallbackError,
+  onSuccess,
 }: UseAuthFormOptions<T>) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -48,6 +51,7 @@ export function useAuthForm<T extends object>({
         }
         if (callbackURL === null) {
           setSucceeded(true);
+          onSuccess?.();
           return;
         }
         router.replace(callbackURL);

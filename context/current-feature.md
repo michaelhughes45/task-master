@@ -1,18 +1,38 @@
-# Current Feature
+# Current Feature: App Shell and Settings (06)
 
-<!-- Feature name and short description -->
+Signed-in layout from the mockup: sidebar on desktop, bottom tab bar on phones, page header with theme toggle and "New" button, placeholder pages for each section, and a working Settings page (appearance, timezone, account).
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+Complete
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `(app)` layout calls `requireUser()` and renders the shell around every app page
+- **Desktop (≥ 768px) sidebar** (`context/mockup/app-desktop.html` `<nav>`): logo mark (blue square, green check) + "Task Master"; nav Today, Calendar, To-dos, Weekly review, Settings with Lucide icons; active item `bg-primary-soft text-primary-ink font-semibold` + `aria-current="page"`; bottom "This week" progress slot (hidden until spec 18) and user menu (avatar initials, name, Sign out)
+- **Phone (< 768px)** (`context/mockup/today-phone.html`): bottom tab bar Today, Calendar, To-dos, Review (68px tall, safe-area padding); Settings reachable from the header avatar; floating "+" button above the tab bar
+- **Page header**: muted kicker + title (set per page), theme toggle (moon/sun), "New" primary button; "New" and "+" are disabled placeholders until spec 12
+- Placeholder pages `/today`, `/calendar`, `/todos`, `/review` (title + muted "Coming soon")
+- **Settings** `/settings`:
+  - Appearance: segmented Light / Dark / System (next-themes)
+  - Timezone: searchable select of IANA zones (`Intl.supportedValuesOf('timeZone')`), saved via server action
+  - Week: "Weeks run Monday to Sunday" (display only)
+  - Sunday review reminder: switch saved to `reviewNotify` (stores only; notifications in spec 22)
+  - Account: email, Change password (email/password users only; current + new via Better Auth), Sign out
+- **Timezone auto-fill**: if `user.timezone` is null, a small client component in the layout sends the browser timezone to a server action once
+- `src/actions/settings.ts`: `updateTimezone`, `updateReviewNotify`, `setTimezoneIfMissing`; Zod-validate timezone against the IANA list; return `ActionResult`
+- Add shadcn components as needed (`dropdown-menu`, `switch`, `select` or `command`/`popover`, `avatar`, `separator`)
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/app/(app)/layout.tsx`; `src/components/layout/` (`AppSidebar.tsx`, `BottomTabs.tsx`, `PageHeader.tsx`, `UserMenu.tsx`, `Fab.tsx`, `TimezoneSync.tsx`); `src/app/(app)/{today,calendar,todos,review,settings}/page.tsx`; `src/components/settings/*`; `src/actions/settings.ts` (+ tests)
+- Server actions take the user id from the session, never from the form
+- Sidebar is static (not sticky or `100vh`-locked) so pages scroll naturally
+- Each page owns its `h1`; the header title must not duplicate it
+- Testing: action tests (invalid timezone rejected, updates scoped to session user); desktop nav highlight and theme toggle/Appearance agree; 375px bottom tabs, FAB, avatar → Settings, no horizontal scroll; Google user's timezone filled on first load; Change password works for password user and hidden for Google-only user; `npm run build` passes
+- The spec lists kebab-case component file names (`app-sidebar.tsx`); this uses PascalCase instead, to match the coding standards and the existing `src/components/layout/Logo.tsx` and `src/components/auth/*`
+- Reuse the existing `Logo`, `theme-toggle` and `SignOutButton` components
+- References: `context/mockup/app-desktop.html`, `context/mockup/today-phone.html`
 
 ## History
 
