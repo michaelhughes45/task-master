@@ -47,6 +47,8 @@ interface TaskRowProps {
   missed: boolean;
   // While the task is still being created.
   disabled?: boolean;
+  // "Mon, Oct 26", first among the tags, for lists that mix days.
+  dayLabel?: string;
   onToggle: () => void;
   // Shows the row menu when given.
   actions?: TaskRowActions;
@@ -54,7 +56,7 @@ interface TaskRowProps {
   details: TaskRowDetails;
 }
 
-export function TaskRow({ task, missed, disabled, onToggle, actions, details }: TaskRowProps) {
+export function TaskRow({ task, missed, disabled, dayLabel, onToggle, actions, details }: TaskRowProps) {
   const [editing, setEditing] = useState(false);
   // Kept after the scope dialog closes, so its text doesn't change while it animates out.
   const [pending, setPending] = useState<PendingChange>({ kind: "delete" });
@@ -118,7 +120,7 @@ export function TaskRow({ task, missed, disabled, onToggle, actions, details }: 
               {task.title}
             </div>
           )}
-          <TaskTags task={task} missed={missed} />
+          <TaskTags task={task} missed={missed} dayLabel={dayLabel} />
           {task.done && task.workNote && (
             <p className="mt-1.5 rounded-md bg-muted px-2.5 py-1.5 text-[13px] break-words text-muted-foreground">
               {task.workNote}
@@ -189,12 +191,15 @@ export function TaskRow({ task, missed, disabled, onToggle, actions, details }: 
   );
 }
 
-function TaskTags({ task, missed }: { task: TaskView; missed: boolean }) {
+function TaskTags({ task, missed, dayLabel }: { task: TaskView; missed: boolean; dayLabel?: string }) {
   const minutes = task.done && task.minutesSpent ? task.minutesSpent : null;
-  if (!missed && !task.doneLate && task.priority !== "HIGH" && minutes === null && !task.repeatLabel) return null;
+  if (!dayLabel && !missed && !task.doneLate && task.priority !== "HIGH" && minutes === null && !task.repeatLabel) {
+    return null;
+  }
 
   return (
     <div className="flex flex-wrap gap-x-3 text-[13px] text-muted-foreground">
+      {dayLabel && <span className="text-foreground">{dayLabel}</span>}
       {missed && <span className="font-medium text-warning">Missed</span>}
       {task.doneLate && <span className="font-medium text-warning">Done late</span>}
       {task.priority === "HIGH" && <span className="font-medium text-primary-text">High priority</span>}

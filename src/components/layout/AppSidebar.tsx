@@ -6,14 +6,16 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/layout/Logo";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { isActivePath, NAV_ITEMS } from "@/components/layout/nav-items";
+import type { WeekProgress } from "@/lib/db/progress";
 
 interface AppSidebarProps {
   name: string;
   email: string;
+  weekProgress: WeekProgress;
 }
 
 // Desktop only. Static, not sticky, so it grows with the page and scrolls with it.
-export function AppSidebar({ name, email }: AppSidebarProps) {
+export function AppSidebar({ name, email, weekProgress }: AppSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -46,10 +48,30 @@ export function AppSidebar({ name, email }: AppSidebarProps) {
           );
         })}
       </ul>
-      {/* The "This week" progress bar goes above the user menu once spec 18 provides the data. */}
-      <div className="mt-auto pt-4">
+      <div className="mt-auto flex flex-col gap-4 pt-4">
+        <WeekProgressBar {...weekProgress} />
         <UserMenu name={name} email={email} />
       </div>
     </nav>
+  );
+}
+
+// Daily occurrences plus weekly tasks done this week.
+function WeekProgressBar({ done, total }: WeekProgress) {
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  return (
+    <div className="flex flex-col gap-2 px-2.5">
+      <div className="flex justify-between text-[13px] text-muted-foreground">
+        <span className="font-medium">This week</span>
+        <span className="font-mono" aria-label={`${done} of ${total} done`}>
+          {done}/{total}
+        </span>
+      </div>
+      <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-[3px] bg-muted">
+        {/* Width is the share done, so it can't be a static class. */}
+        <div className="h-full rounded-[3px] bg-success transition-[width]" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
   );
 }

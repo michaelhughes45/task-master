@@ -1,27 +1,17 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useCurrentMinute } from "@/hooks/use-current-minute";
 import { minutesToPx } from "@/lib/calendar-layout";
 import { instantToWallMinutes, todayIn } from "@/lib/dates";
 import type { DateStr } from "@/types/dates";
 
-const MINUTE_MS = 60 * 1000;
-
-function subscribe(onChange: () => void) {
-  const id = setInterval(onChange, MINUTE_MS);
-  return () => clearInterval(id);
-}
-
-// Whole minutes, so the snapshot only changes once a minute.
-const currentMinute = () => Math.floor(Date.now() / MINUTE_MS);
-
 // The current time on today's column. Client-only: the server's "now" would never match the
 // browser's at hydration.
 export function NowLine({ day, tz }: { day: DateStr; tz: string }) {
-  const minute = useSyncExternalStore(subscribe, currentMinute, () => null);
+  const minute = useCurrentMinute(null);
   if (minute === null) return null;
 
-  const now = new Date(minute * MINUTE_MS);
+  const now = new Date(minute);
   // The page may have stayed open past midnight.
   if (todayIn(tz, now) !== day) return null;
 
