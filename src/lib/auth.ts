@@ -3,14 +3,16 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { after } from "next/server";
-import { isEmailVerificationEnabled, sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
-const verificationRequired = isEmailVerificationEnabled();
+const verificationRequired = env.EMAIL_VERIFICATION_ENABLED;
 
 export const auth = betterAuth({
   // Email links are built from this, never from the request's Host header
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
@@ -29,8 +31,8 @@ export const auth = betterAuth({
   rateLimit: { enabled: true },
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
   account: {
