@@ -2,8 +2,7 @@ import type { EventLayout } from "@/lib/calendar-layout";
 import type { DateStr } from "@/types/dates";
 import type { EventColor, EventDetails } from "@/types/events";
 
-// The views the calendar draws. "month" arrives in spec 14.
-export type CalendarView = "day" | "week";
+export type CalendarView = "day" | "week" | "month";
 
 export interface CalendarEvent {
   id: string;
@@ -29,4 +28,18 @@ export interface CalendarColumn {
   isToday: boolean;
   allDay: CalendarEvent[];
   timed: PositionedEvent[];
+}
+
+// One cell of the month grid.
+export interface MonthDay {
+  day: DateStr;
+  dayNumber: number;
+  // "Wednesday, October 28", for the cell's links.
+  label: string;
+  inMonth: boolean;
+  isToday: boolean;
+  // The first few events, all-day first, then by start time.
+  chips: CalendarEvent[];
+  // How many more events the day has than chips.
+  moreCount: number;
 }

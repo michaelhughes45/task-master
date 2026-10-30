@@ -1,18 +1,31 @@
-# Current Feature
+# Current Feature: Calendar Month View (14)
 
-<!-- Feature name and short description -->
+Add the month view to `/calendar`: a Monday-start grid with event chips per day.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `view=month`: grid of 5 or 6 weeks, from the Monday on or before the 1st to the Sunday on or after the last day
+- Weekday header row (Mon … Sun)
+- Each cell: date number (today in a blue circle), up to 2 event chips (coloured dot + title, ellipsis; all-day first, then by start time), then "+N more" when there are more
+- Days outside the month use the page background and muted text
+- Clicking a day number or "+N more" goes to that day's day view; clicking a chip opens the event details dialog
+- Toolbar label "October 2026"; previous/next move by a month; Today returns to the current month
+- Events for the whole visible range loaded in one query
+- Min-width 640px with horizontal scroll inside the card on phones
+- `monthGridRange(day)` in `src/lib/dates.ts` with tests: a month starting on Monday, one starting on Sunday, February 2027, a 6-week month
+- Chips and "+N more" match the seeded data; navigation and day-view links work; `npm run build` passes
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/components/calendar/MonthGrid.tsx`, `MonthCell.tsx`; `src/app/(app)/calendar/page.tsx`; `src/lib/dates.ts`
+- Reference: `context/mockup/app-desktop.html` (Calendar → Month)
+- Spec 13 left Month as a disabled "Coming soon" segment in `CalendarToolbar` and `parseView` maps `month` → week; both need enabling. `stepDate` needs a month step.
+- Reuse `getEventsInRange(userId, firstDay, lastDay, tz)` for the grid range (one query), the existing `openEvent` / `toEventDetails` wiring for chips, and the all-day-as-UTC-dates rule (multi-day all-day and midnight-crossing timed events should appear on each covered day, as in week view).
+- Month stepping must clamp the day (e.g. Jan 31 → Feb 28) without `24h` arithmetic.
 
 ## History
 

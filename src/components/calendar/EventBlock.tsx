@@ -62,3 +62,25 @@ export function AllDayEvent({ event }: { event: CalendarEvent }) {
     </button>
   );
 }
+
+const DOT_CLASS: Record<EventColor, string> = {
+  BLUE: "bg-primary",
+  GREEN: "bg-success",
+};
+
+// A coloured dot and the title in a month cell.
+export function MonthEventChip({ event }: { event: CalendarEvent }) {
+  const { openEvent } = useItemDialogs();
+
+  return (
+    <button
+      type="button"
+      onClick={() => openEvent(event.details)}
+      aria-label={eventLabel(event)}
+      className={cn(BASE_CLASS, "-mx-1 flex w-[calc(100%+0.5rem)] items-center gap-1.5 px-1 text-xs hover:bg-muted")}
+    >
+      <span aria-hidden="true" className={cn("size-1.5 flex-none rounded-full", DOT_CLASS[event.color])} />
+      <span className="truncate">{event.title}</span>
+    </button>
+  );
+}
