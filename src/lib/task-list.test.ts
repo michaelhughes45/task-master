@@ -100,6 +100,18 @@ describe("applyTaskChange", () => {
     expect(result).toMatchObject({ done: false, doneLate: false, minutesSpent: null, workNote: null });
   });
 
+  it("saves details on a done task and keeps its lateness", () => {
+    const done = task({ done: true, doneLate: false, minutesSpent: 10 });
+    const [result] = applyTaskChange([done], { type: "details", id: "t1", minutesSpent: 45, workNote: "Intro", today });
+    expect(result).toMatchObject({ done: true, doneLate: false, minutesSpent: 45, workNote: "Intro" });
+  });
+
+  it("ticks a not-done task when saving details, late if its day has passed", () => {
+    const past = task({ day: "2026-10-27" });
+    const [result] = applyTaskChange([past], { type: "details", id: "t1", minutesSpent: null, workNote: "Notes", today });
+    expect(result).toMatchObject({ done: true, doneLate: true, minutesSpent: null, workNote: "Notes" });
+  });
+
   it("only changes the matching task", () => {
     const other = task({ id: "t2" });
     const result = applyTaskChange([task(), other], { type: "toggle", id: "t1", done: true, today });

@@ -1,9 +1,11 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Clock3 } from "lucide-react";
 import { useRef, useState } from "react";
+import { TaskDetailsPanel } from "@/components/todos/TaskDetailsPanel";
 import { TaskRowMenu } from "@/components/todos/TaskRowMenu";
 import { Button } from "@/components/ui/button";
+import type { CompletionDetails } from "@/hooks/use-task-list";
 import { formatMinutes } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Priority, TaskView } from "@/types/tasks";
@@ -12,6 +14,15 @@ interface TaskRowActions {
   onRename: (title: string) => void;
   onPriorityChange: (priority: Priority) => void;
   onDelete: () => void;
+}
+
+interface TaskRowDetails {
+  open: boolean;
+  // Focus the panel's first field when it opens.
+  autoFocus: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onSave: (details: CompletionDetails) => void;
 }
 
 interface TaskRowProps {
@@ -23,10 +34,19 @@ interface TaskRowProps {
   onToggle: () => void;
   // Shows the row menu when given.
   actions?: TaskRowActions;
+  // Shows the clock button and the time spent / notes panel.
+  details: TaskRowDetails;
 }
 
-export function TaskRow({ task, missed, disabled, onToggle, actions }: TaskRowProps) {
+export function TaskRow({ task, missed, disabled, onToggle, actions, details }: TaskRowProps) {
   const [editing, setEditing] = useState(false);
+  const clockRef = useRef<HTMLButtonElement>(null);
+
+  function closeDetails(save?: CompletionDetails) {
+    if (save) details.onSave(save);
+    details.onClose();
+    clockRef.current?.focus();
+  }
 
   return (
     <li className="border-t">
@@ -67,6 +87,11 @@ export function TaskRow({ task, missed, disabled, onToggle, actions }: TaskRowPr
             </div>
           )}
           <TaskTags task={task} missed={missed} />
+          {task.done && task.workNote && (
+            <p className="mt-1.5 rounded-md bg-muted px-2.5 py-1.5 text-[13px] break-words text-muted-foreground">
+              {task.workNote}
+            </p>
+          )}
         </div>
 
         {missed && (
@@ -81,6 +106,19 @@ export function TaskRow({ task, missed, disabled, onToggle, actions }: TaskRowPr
           </Button>
         )}
 
+        <button
+          ref={clockRef}
+          type="button"
+          onClick={details.onToggle}
+          disabled={disabled}
+          aria-label={`Time spent and notes for ${task.title}`}
+          aria-expanded={details.open}
+          title="Time spent and notes"
+          className="flex size-11 flex-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 aria-expanded:bg-muted md:size-10"
+        >
+          <Clock3 className="size-[17px]" strokeWidth={1.8} aria-hidden="true" />
+        </button>
+
         {actions && (
           <TaskRowMenu
             title={task.title}
@@ -92,6 +130,14 @@ export function TaskRow({ task, missed, disabled, onToggle, actions }: TaskRowPr
           />
         )}
       </div>
+      {details.open && (
+        <TaskDetailsPanel
+          task={task}
+          autoFocus={details.autoFocus}
+          onSave={closeDetails}
+          onClose={() => closeDetails()}
+        />
+      )}
     </li>
   );
 }

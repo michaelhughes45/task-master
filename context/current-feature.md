@@ -1,18 +1,31 @@
-# Current Feature
+# Current Feature: Task Details — Time Spent and Notes (10)
 
-<!-- Feature name and short description -->
+Record how long a task took and what was worked on, through an inline panel that opens after ticking a task, can be skipped, and can be reopened from a clock button.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Ticking a task done expands an inline `TaskDetailsPanel` under the row: "Time spent (min)" number input (placeholder: existing value or "e.g. 30"), "What I worked on" text input, Skip and Save buttons, and the muted hint "Both are optional."
+- A clock icon button on every row (`aria-label` "Time spent and notes for {title}") toggles the panel
+- Saving on a not-done task also marks it done
+- Only one row's panel open at a time per list
+- Enter in either input saves; Escape closes
+- Saved details show on the row: minutes as a mono success-ink tag ("45 min", "2h 10m"), the note in a small sunken box under the title
+- Save through `saveCompletionDetails` (spec 08); validate 0–1440 minutes and ≤ 500 characters, with inline errors
+- Unticking asks nothing but clears details (completion row deleted); an undo toast restores them
+- Keyboard: sensible Tab order, visible focus ring
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/components/todos/TaskRow.tsx`, new `src/components/todos/TaskDetailsPanel.tsx`.
+- Reference: `context/mockup/app-desktop.html` (expanded row panel).
+- Already in place: `saveCompletionDetails` in `src/actions/tasks.ts` (also ticks; returns `fieldErrors`), the completion Zod schema in `src/lib/validations/tasks.ts`, the minutes tag in `TaskRow` via `formatMinutes`, and `applyTaskChange` in `src/lib/task-list.ts` clearing `minutesSpent`/`workNote` on untick. `useTaskList` does not yet call `saveCompletionDetails`.
+- The "one panel open per list" state likely belongs in `TaskListCard` (or `TodosBoard`), not each row.
+- Undo after untick needs the previous details captured before the optimistic change, then re-saved with `saveCompletionDetails` (a re-tick gets a new `completedAt`, so a late completion may come back with a new time).
+- Testing: tick → Save 45 + note → tag and note shown and persisted; tick → Skip → still done, no details; clock on an undone task → Save → done with details; untick → undo restores details; keyboard flow; `npm test` and `npm run build` pass; check at 375px.
 
 ## History
 

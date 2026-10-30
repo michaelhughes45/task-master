@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { AddTaskInput } from "@/components/todos/AddTaskInput";
 import { TaskRow } from "@/components/todos/TaskRow";
 import type { TaskListHandlers } from "@/hooks/use-task-list";
@@ -16,8 +19,21 @@ interface TaskListCardProps {
   onAdd: (title: string) => void;
 }
 
+// The details panel open in this list, if any. Only one at a time.
+interface OpenDetails {
+  id: string;
+  autoFocus: boolean;
+}
+
 export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabel, list, onAdd }: TaskListCardProps) {
   const { done, total } = countDone(tasks);
+  const [openDetails, setOpenDetails] = useState<OpenDetails | null>(null);
+
+  // Ticking opens the details prompt; unticking closes it.
+  function toggle(task: TaskView) {
+    setOpenDetails(task.done ? (prev) => (prev?.id === task.id ? null : prev) : { id: task.id, autoFocus: false });
+    list.toggle(task);
+  }
 
   return (
     <section className="overflow-hidden rounded-lg border bg-card">
@@ -46,11 +62,19 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
               task={task}
               missed={isMissed(task, today)}
               disabled={isDraftTask(task)}
-              onToggle={() => list.toggle(task)}
+              onToggle={() => toggle(task)}
               actions={{
                 onRename: (newTitle) => list.rename(task, newTitle),
                 onPriorityChange: (priority) => list.setPriority(task, priority),
                 onDelete: () => list.remove(task),
+              }}
+              details={{
+                open: openDetails?.id === task.id,
+                autoFocus: openDetails?.autoFocus ?? false,
+                onToggle: () =>
+                  setOpenDetails((prev) => (prev?.id === task.id ? null : { id: task.id, autoFocus: true })),
+                onClose: () => setOpenDetails(null),
+                onSave: (details) => list.saveDetails(task, details),
               }}
             />
           ))}
