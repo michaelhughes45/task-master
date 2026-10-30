@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fromDbDate, toDbDate, weekStartOf } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
+import { isTaskOccurrence } from "@/lib/recurrence";
 import { getCurrentUserId } from "@/lib/session";
 import {
   completionDetailsSchema,
@@ -42,11 +43,15 @@ function normalizeDate(scope: TaskScope, day: DateStr): DateStr {
 }
 
 function findOwnedTask(id: string, userId: string) {
-  return prisma.task.findFirst({ where: { id, userId }, select: { id: true, scope: true, date: true } });
+  return prisma.task.findFirst({
+    where: { id, userId },
+    select: { id: true, scope: true, date: true, rrule: true, title: true },
+  });
 }
 
 // Shared checks for the completion actions: signed in, valid input, own task, and a date the
-// task is actually planned for (tasks don't repeat yet, so only its own day or week).
+// task is actually planned for (its own day or week, or an occurrence of its series that
+// wasn't cancelled).
 async function resolveOccurrence(
   taskId: unknown,
   occurrenceDate: unknown,
@@ -63,7 +68,17 @@ async function resolveOccurrence(
   if (!task) return { success: false, error: NOT_FOUND };
 
   const occurrence = normalizeDate(task.scope, day.data);
-  if (occurrence !== fromDbDate(task.date)) return { success: false, error: NOT_AN_OCCURRENCE };
+  const exceptions = await prisma.taskException.findMany({
+    where: { taskId: task.id, occurrenceDate: toDbDate(occurrence) },
+    select: { occurrenceDate: true, cancelled: true, title: true, date: true },
+  });
+  const series = { ...task, date: fromDbDate(task.date) };
+  const known = exceptions.map((e) => ({
+    ...e,
+    occurrenceDate: fromDbDate(e.occurrenceDate),
+    date: e.date && fromDbDate(e.date),
+  }));
+  if (!isTaskOccurrence(series, known, occurrence)) return { success: false, error: NOT_AN_OCCURRENCE };
   return { success: true, taskId: task.id, occurrence: toDbDate(occurrence) };
 }
 
@@ -105,8 +120,9 @@ export async function updateTask(id: unknown, input: unknown): Promise<ActionRes
     const newDate = date === undefined ? undefined : toDbDate(normalizeDate(task.scope, date));
     await prisma.$transaction([
       prisma.task.update({ where: { id: task.id, userId }, data: { ...fields, date: newDate } }),
-      // A one-off task's completion is for its own date, so it moves with the task.
-      ...(newDate
+      // A one-off task's completion is for its own date, so it moves with the task. A series'
+      // completions stay on the dates they were for.
+      ...(newDate && task.rrule === null
         ? [prisma.taskCompletion.updateMany({ where: { taskId: task.id }, data: { occurrenceDate: newDate } })]
         : []),
     ]);

@@ -2,16 +2,23 @@ import { addDays, isBefore } from "@/lib/dates";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { Priority, TaskView } from "@/types/tasks";
 
-// Optimistic edits to a list of tasks, applied before the server action finishes.
+// Optimistic edits to a list of tasks, applied before the server action finishes. Ticking and
+// details change one occurrence (by key); renaming, priority and deleting change the whole task
+// (by id), so every occurrence of a repeating task in the list follows.
 export type TaskListChange =
-  | { type: "toggle"; id: string; done: boolean; today: DateStr }
+  | { type: "toggle"; key: string; done: boolean; today: DateStr }
   | { type: "add"; task: TaskView }
   | { type: "update"; id: string; title?: string; priority?: Priority }
   // Saving details also ticks the task.
-  | { type: "details"; id: string; minutesSpent: number | null; workNote: string | null; today: DateStr }
+  | { type: "details"; key: string; minutesSpent: number | null; workNote: string | null; today: DateStr }
   | { type: "remove"; id: string };
 
 const DRAFT_PREFIX = "draft:";
+
+// One occurrence: a repeating task can appear more than once in a list with the same id.
+export function taskKey(task: Pick<TaskView, "id" | "occurrenceDate">) {
+  return `${task.id}@${task.occurrenceDate}`;
+}
 
 // A task's day or week has ended. Weekly tasks run until their Sunday.
 export function isPastOccurrence(task: { scope: TaskScope; day: DateStr }, today: DateStr) {
@@ -36,6 +43,7 @@ export function draftTask(id: string, title: string, scope: TaskScope, day: Date
     scope,
     priority: "NORMAL",
     day,
+    occurrenceDate: day,
     done: false,
     doneLate: false,
     minutesSpent: null,
@@ -68,7 +76,7 @@ export function applyTaskChange(tasks: TaskView[], change: TaskListChange): Task
     }
     case "toggle":
       return tasks.map((task) => {
-        if (task.id !== change.id) return task;
+        if (taskKey(task) !== change.key) return task;
         // Unticking deletes the completion, and its details with it.
         if (!change.done) {
           return { ...task, done: false, doneLate: false, minutesSpent: null, workNote: null };
@@ -76,8 +84,8 @@ export function applyTaskChange(tasks: TaskView[], change: TaskListChange): Task
         return markDone(task, change.today);
       });
     case "details": {
-      const { id, minutesSpent, workNote, today } = change;
-      return tasks.map((task) => (task.id === id ? { ...markDone(task, today), minutesSpent, workNote } : task));
+      const { key, minutesSpent, workNote, today } = change;
+      return tasks.map((task) => (taskKey(task) === key ? { ...markDone(task, today), minutesSpent, workNote } : task));
     }
   }
 }

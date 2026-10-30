@@ -92,14 +92,30 @@ model Task {
   notes     String?
   scope     TaskScope
   priority  Priority  @default(NORMAL)
-  date      DateTime  @db.Date // DAILY: the day; WEEKLY: the Monday of the week
+  date      DateTime  @db.Date // DAILY: the day; WEEKLY: the Monday of the week (first occurrence if repeating)
+  rrule     String? // RFC 5545 RRULE part, e.g. "FREQ=WEEKLY;BYDAY=MO,WE"; null = does not repeat
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   completions TaskCompletion[]
+  exceptions  TaskException[]
 
   @@index([userId, date])
+}
+
+// One changed or cancelled occurrence of a repeating task, keyed by its original date.
+model TaskException {
+  id             String    @id @default(cuid())
+  taskId         String
+  occurrenceDate DateTime  @db.Date
+  cancelled      Boolean   @default(false)
+  title          String? // overrides; null = unchanged
+  date           DateTime? @db.Date // moved to another day
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, occurrenceDate])
 }
 
 model TaskCompletion {
@@ -132,10 +148,31 @@ model Event {
   // each at 00:00 UTC; read back with fromDbDate, never in the user's timezone.
   startAt   DateTime
   endAt     DateTime
+  // RFC 5545 RRULE part; null = does not repeat. Expanded on the start's wall time in the
+  // user's timezone (floating), so DST doesn't move the event.
+  rrule     String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exceptions EventException[]
 
   @@index([userId, startAt])
+}
+
+// One changed or cancelled occurrence of a repeating event, keyed by its original start.
+model EventException {
+  id              String    @id @default(cuid())
+  eventId         String
+  occurrenceStart DateTime // the occurrence's original start instant
+  cancelled       Boolean   @default(false)
+  title           String? // overrides; null = unchanged
+  startAt         DateTime?
+  endAt           DateTime?
+  location        String?
+  notes           String?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, occurrenceStart])
 }

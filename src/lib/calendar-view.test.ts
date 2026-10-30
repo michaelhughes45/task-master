@@ -7,6 +7,8 @@ const NY = "America/New_York";
 function timed(id: string, startAt: string, endAt: string): EventView {
   return {
     id,
+    key: id,
+    occurrenceStart: new Date(startAt),
     title: id,
     notes: null,
     location: null,
@@ -140,6 +142,15 @@ describe("buildCalendarColumns", () => {
     expect(columns[0].timed[0].layout).toMatchObject({ top: 22 * 48, height: 2 * 48 });
     expect(columns[1].timed[0].layout).toMatchObject({ top: 0, height: 48 });
     expect(columns[1].timed[0].timeLabel).toBe("10:00 PM – 1:00 AM");
+  });
+
+  it("keeps each occurrence of a repeating event apart", () => {
+    // The same series at 9 AM EDT on Monday and Wednesday.
+    const monday = { ...timed("gym", "2026-10-26T13:00:00Z", "2026-10-26T14:00:00Z"), key: "gym@mon" };
+    const wednesday = { ...timed("gym", "2026-10-28T13:00:00Z", "2026-10-28T14:00:00Z"), key: "gym@wed" };
+    const { columns } = build([monday, wednesday], ["2026-10-26", "2026-10-27", "2026-10-28"], "week");
+    expect(columns.map((column) => column.timed.map((event) => event.key))).toEqual([["gym@mon"], [], ["gym@wed"]]);
+    expect(columns[2].timed[0]).toMatchObject({ id: "gym", details: { dayLabel: "Wednesday, October 28" } });
   });
 
   it("hides the time on blocks under 45 minutes", () => {

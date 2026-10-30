@@ -23,7 +23,7 @@ interface SeedTask {
   done?: { minutes?: number; note?: string };
 }
 
-// The mockup's one-off tasks, by weekday (0 = Monday). Repeating ones arrive with recurrence.
+// The mockup's one-off tasks, by weekday (0 = Monday).
 const DAILY: SeedTask[][] = [
   [{ title: "Back up laptop", done: { minutes: 15 } }],
   [
@@ -37,7 +37,21 @@ const DAILY: SeedTask[][] = [
   [{ title: "Plan next week" }],
 ];
 
-const WEEKLY: SeedTask[] = [
+interface SeedSeries {
+  title: string;
+  rrule: string;
+  // Occurrences ticked off, by weekday (0 = Monday) this week.
+  done: Record<number, SeedTask["done"]>;
+}
+
+// The mockup's repeating daily tasks, starting this Monday. They come first in each day's list.
+const REPEATING: SeedSeries[] = [
+  { title: "Review inbox", rrule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", done: { 0: { minutes: 15 }, 1: {}, 2: { minutes: 20 } } },
+  { title: "Read 20 pages", rrule: "FREQ=DAILY", done: { 0: {} } },
+  { title: "Stretch for 10 minutes", rrule: "FREQ=DAILY", done: { 0: {}, 1: {}, 2: {} } },
+];
+
+const WEEKLY: (SeedTask & { rrule?: string })[] = [
   { title: "Grocery run", done: { minutes: 50 } },
   { title: "Clean the bathroom" },
   {
@@ -46,7 +60,7 @@ const WEEKLY: SeedTask[] = [
     done: { minutes: 130, note: "Summarised sections 3.1 to 3.4. Diagrams still to do." },
   },
   { title: "Plan next week's meals" },
-  { title: "Long run (10 km)" },
+  { title: "Long run (10 km)", rrule: "FREQ=WEEKLY" },
 ];
 
 interface SeedEvent {
@@ -57,36 +71,43 @@ interface SeedEvent {
   location?: string;
 }
 
-// The mockup's events, by weekday (0 = Monday). Gym, deep work, Spanish class and the weekly
-// review repeat in the mockup; they're one-off rows here until recurrence (spec 15).
-const GYM: SeedEvent = { title: "Gym", start: "07:30", end: "08:15", color: "GREEN", location: "Northside Fitness" };
-const deepWork = (end: string): SeedEvent => ({ title: "Deep work: project proposal", start: "09:00", end });
-
+// The mockup's one-off events, by weekday (0 = Monday).
 const EVENTS: SeedEvent[][] = [
-  [GYM, deepWork("12:00"), { title: "Grocery pickup", start: "18:00", end: "18:45" }],
+  [{ title: "Grocery pickup", start: "18:00", end: "18:45" }],
   [
-    deepWork("12:00"),
     { title: "Call with insurance", start: "14:00", end: "14:30" },
     { title: "Dinner with friends", start: "19:00", end: "21:00", location: "Osteria on 5th" },
   ],
   [
-    GYM,
-    deepWork("12:00"),
     { title: "Lunch with Sam", start: "13:00", end: "13:30" },
     { title: "Dentist", start: "16:00", end: "16:45", location: "Dr. Patel, Suite 210" },
-    { title: "Spanish class", start: "19:00", end: "20:00", color: "GREEN" },
   ],
-  [deepWork("12:00"), { title: "Haircut", start: "17:30", end: "18:15" }],
-  [GYM, deepWork("11:00"), { title: "Movie night", start: "20:00", end: "22:00" }],
+  [{ title: "Haircut", start: "17:30", end: "18:15" }],
+  [{ title: "Movie night", start: "20:00", end: "22:00" }],
   [
     { title: "Hike: Ridge Loop", start: "09:00", end: "13:00", color: "GREEN" },
     { title: "Halloween party", start: "19:30", end: "22:30" },
   ],
-  [
-    { title: "Meal prep", start: "15:00", end: "16:30", color: "GREEN" },
-    { title: "Weekly review", start: "18:00", end: "18:30" },
-  ],
+  [{ title: "Meal prep", start: "15:00", end: "16:30", color: "GREEN" }],
 ];
+
+// The mockup's repeating events, each starting on its first weekday this week.
+const REPEATING_EVENTS: (SeedEvent & { weekday: number; rrule: string })[] = [
+  {
+    title: "Gym",
+    weekday: 0,
+    start: "07:30",
+    end: "08:15",
+    color: "GREEN",
+    location: "Northside Fitness",
+    rrule: "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+  },
+  { title: "Deep work: project proposal", weekday: 0, start: "09:00", end: "12:00", rrule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR" },
+  { title: "Spanish class", weekday: 2, start: "19:00", end: "20:00", color: "GREEN", rrule: "FREQ=WEEKLY;BYDAY=WE" },
+  { title: "Weekly review", weekday: 6, start: "18:00", end: "18:30", rrule: "FREQ=WEEKLY;BYDAY=SU" },
+];
+// In the mockup, Friday's deep work ends at 11:00: an exception to this week's occurrence.
+const DEEP_WORK_FRIDAY_END = "11:00";
 
 // Existing users keep their id (and sessions); the password is reset to the demo one.
 async function upsertDemoUser() {
@@ -124,16 +145,23 @@ async function upsertDemoUser() {
 }
 
 // Past days were ticked that evening; today's (and weekly) ones just now.
-function completion(task: SeedTask, day: string, today: string, now: Date, occurrenceDate: Date) {
-  if (!task.done || isBefore(today, day)) return undefined;
+function completionData(done: SeedTask["done"], day: string, today: string, now: Date, occurrenceDate: string) {
+  if (!done || isBefore(today, day)) return [];
   const completedAt = day === today ? now : wallTimeToInstant(day, "18:00", DEMO_USER_TIMEZONE);
-  return {
-    create: {
-      occurrenceDate,
+  return [
+    {
+      occurrenceDate: toDbDate(occurrenceDate),
       completedAt,
-      minutesSpent: task.done.minutes,
-      workNote: task.done.note,
+      minutesSpent: done.minutes,
+      workNote: done.note,
     },
+  ];
+}
+
+function eventTimes(day: string, event: SeedEvent) {
+  return {
+    startAt: wallTimeToInstant(day, event.start, DEMO_USER_TIMEZONE),
+    endAt: wallTimeToInstant(day, event.end, DEMO_USER_TIMEZONE),
   };
 }
 
@@ -144,45 +172,86 @@ async function main() {
   const monday = weekStartOf(today);
   const userId = await upsertDemoUser();
 
+  const repeating = REPEATING.map((series) => ({
+    task: series,
+    scope: "DAILY" as const,
+    day: monday,
+    rrule: series.rrule,
+    completions: Object.entries(series.done).flatMap(([weekday, done]) => {
+      const day = addDays(monday, Number(weekday));
+      return completionData(done, day, today, now, day);
+    }),
+  }));
   const daily = DAILY.flatMap((tasks, i) => {
     const day = addDays(monday, i);
-    return tasks.map((task) => ({ task, day, scope: "DAILY" as const }));
+    return tasks.map((task) => ({
+      task,
+      scope: "DAILY" as const,
+      day,
+      rrule: undefined,
+      completions: completionData(task.done, day, today, now, day),
+    }));
   });
-  const weekly = WEEKLY.map((task) => ({ task, day: monday, scope: "WEEKLY" as const }));
-  const events = EVENTS.flatMap((dayEvents, i) => {
-    const day = addDays(monday, i);
-    return dayEvents.map((event) => ({
+  const weekly = WEEKLY.map((task) => ({
+    task,
+    scope: "WEEKLY" as const,
+    day: monday,
+    rrule: task.rrule,
+    completions: completionData(task.done, today, today, now, monday),
+  }));
+  const tasks = [...repeating, ...daily, ...weekly];
+
+  const events = EVENTS.flatMap((dayEvents, i) =>
+    dayEvents.map((event) => ({
       userId,
       title: event.title,
       color: event.color,
       location: event.location,
-      startAt: wallTimeToInstant(day, event.start, DEMO_USER_TIMEZONE),
-      endAt: wallTimeToInstant(day, event.end, DEMO_USER_TIMEZONE),
-    }));
-  });
+      ...eventTimes(addDays(monday, i), event),
+    })),
+  );
+  const fridayDeepWork = eventTimes(addDays(monday, 4), { ...REPEATING_EVENTS[1], end: DEEP_WORK_FRIDAY_END });
 
   await prisma.$transaction([
     prisma.task.deleteMany({ where: { userId } }),
     prisma.event.deleteMany({ where: { userId } }),
     prisma.event.createMany({ data: events }),
-    ...[...daily, ...weekly].map(({ task, day, scope }, i, all) =>
+    ...REPEATING_EVENTS.map((event) =>
+      prisma.event.create({
+        data: {
+          userId,
+          title: event.title,
+          color: event.color,
+          location: event.location,
+          rrule: event.rrule,
+          ...eventTimes(addDays(monday, event.weekday), event),
+          exceptions:
+            event === REPEATING_EVENTS[1]
+              ? { create: { occurrenceStart: fridayDeepWork.startAt, endAt: fridayDeepWork.endAt } }
+              : undefined,
+        },
+      }),
+    ),
+    ...tasks.map(({ task, scope, day, rrule, completions }, i) =>
       prisma.task.create({
         data: {
           userId,
           // Staggered so the list order (createdAt) matches the order above
-          createdAt: new Date(now.getTime() - (all.length - i) * 1000),
+          createdAt: new Date(now.getTime() - (tasks.length - i) * 1000),
           title: task.title,
           scope,
-          priority: task.priority,
+          priority: "priority" in task ? task.priority : undefined,
           date: toDbDate(day),
-          completions: completion(task, scope === "DAILY" ? day : today, today, now, toDbDate(day)),
+          rrule,
+          completions: { create: completions },
         },
       }),
     ),
   ]);
 
   console.log(
-    `Seeded ${DEMO_USER_EMAIL}: ${daily.length} daily and ${weekly.length} weekly tasks and ${events.length} events for the week of ${monday}`,
+    `Seeded ${DEMO_USER_EMAIL}: ${tasks.length} tasks (${repeating.length + 1} repeating) and ` +
+      `${events.length + REPEATING_EVENTS.length} events (${REPEATING_EVENTS.length} repeating) from the week of ${monday}`,
   );
 }
 

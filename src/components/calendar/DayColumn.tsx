@@ -9,7 +9,7 @@ export function DayColumn({ column, tz }: { column: CalendarColumn; tz: string }
     <div className="relative h-[1152px] border-l bg-[repeating-linear-gradient(to_bottom,var(--border)_0,var(--border)_1px,transparent_1px,transparent_48px)]">
       <EmptySlotArea day={column.day} />
       {column.timed.map((event) => (
-        <EventBlock key={event.id} event={event} />
+        <EventBlock key={event.key} event={event} />
       ))}
       {column.isToday && <NowLine day={column.day} tz={tz} />}
     </div>
