@@ -43,20 +43,22 @@ export function TodosBoard({ day, weekStart, today, tasks, stripDays, dayLabels,
       )}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(330px,100%),1fr))] items-start gap-6">
         <TaskListCard
-          {...dayLabels}
+          title={dayLabels.title}
+          subtitle={dayLabels.subtitle}
           tasks={dayTasks}
           today={today}
           emptyText="Nothing planned for this day."
           list={handlers}
-          onAdd={(title) => add(title, "DAILY", day)}
+          add={{ label: dayLabels.addLabel, onAdd: (title) => add(title, "DAILY", day) }}
         />
         <TaskListCard
-          {...weekLabels}
+          title={weekLabels.title}
+          subtitle={weekLabels.subtitle}
           tasks={weekTasks}
           today={today}
           emptyText="No weekly tasks yet."
           list={handlers}
-          onAdd={(title) => add(title, "WEEKLY", weekStart)}
+          add={{ label: weekLabels.addLabel, onAdd: (title) => add(title, "WEEKLY", weekStart) }}
         />
       </div>
     </div>

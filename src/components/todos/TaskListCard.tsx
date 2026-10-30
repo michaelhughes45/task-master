@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AddTaskInput } from "@/components/todos/AddTaskInput";
 import { TaskRow } from "@/components/todos/TaskRow";
 import type { TaskListHandlers } from "@/hooks/use-task-list";
+import { formatDayShort } from "@/lib/dates";
 import { countDone, isDraftTask, isMissed, taskKey } from "@/lib/task-list";
 import type { DateStr } from "@/types/dates";
 import type { TaskView } from "@/types/tasks";
@@ -14,9 +15,13 @@ interface TaskListCardProps {
   tasks: TaskView[];
   today: DateStr;
   emptyText: string;
-  addLabel: string;
   list: TaskListHandlers;
-  onAdd: (title: string) => void;
+  // Shows the inline add field when given.
+  add?: { label: string; onAdd: (title: string) => void };
+  // Replaces the "done/total" count.
+  countLabel?: string;
+  // Tags each row with its day, for lists that mix days.
+  showDay?: boolean;
 }
 
 // The details panel open in this list, if any (by taskKey). Only one at a time.
@@ -25,7 +30,17 @@ interface OpenDetails {
   autoFocus: boolean;
 }
 
-export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabel, list, onAdd }: TaskListCardProps) {
+export function TaskListCard({
+  title,
+  subtitle,
+  tasks,
+  today,
+  emptyText,
+  list,
+  add,
+  countLabel,
+  showDay,
+}: TaskListCardProps) {
   const { done, total } = countDone(tasks);
   const [openDetails, setOpenDetails] = useState<OpenDetails | null>(null);
 
@@ -48,9 +63,13 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
             </>
           )}
         </h2>
-        <span className="font-mono text-[13px] text-muted-foreground" aria-label={`${done} of ${total} done`}>
-          {done}/{total}
-        </span>
+        {countLabel ? (
+          <span className="font-mono text-[13px] text-muted-foreground">{countLabel}</span>
+        ) : (
+          <span className="font-mono text-[13px] text-muted-foreground" aria-label={`${done} of ${total} done`}>
+            {done}/{total}
+          </span>
+        )}
       </div>
 
       {tasks.length === 0 ? (
@@ -63,6 +82,7 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
               task={task}
               missed={isMissed(task, today)}
               disabled={isDraftTask(task)}
+              dayLabel={showDay ? formatDayShort(task.day) : undefined}
               onToggle={() => toggle(task)}
               actions={{
                 onRename: (newTitle, scope) => list.rename(task, newTitle, scope),
@@ -85,7 +105,7 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
         </ul>
       )}
 
-      <AddTaskInput label={addLabel} onAdd={onAdd} />
+      {add && <AddTaskInput label={add.label} onAdd={add.onAdd} />}
     </section>
   );
 }
