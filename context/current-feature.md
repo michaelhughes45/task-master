@@ -1,18 +1,36 @@
-# Current Feature
+# Current Feature: New Task / Event Dialog and Event Details (12)
 
-<!-- Feature name and short description -->
+Wire the header "New" button and the phone "+" button to a dialog that creates a task or an event, and add the event details dialog (view, edit, delete) used by the calendar and Today page. No repeat options yet (spec 16).
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- **New dialog** (shadcn `dialog`; full-screen sheet on phones), matching the mockup:
+  - Segmented **Task | Event** at the top; title "New task" / "New event"
+  - Title input (autofocus)
+  - Task fields: List (Daily | Weekly), Date (label "Week of" for weekly), Priority (Low / Normal / High)
+  - Event fields: Date, Starts, Ends (hidden when All day), All day switch, Location (optional), Color (blue / green swatches with `aria-pressed`)
+  - Default date = the current page's `?date=` or today; default event time = next full hour, 1 hour long
+  - Footer: Cancel, and "Add task" / "Save event"
+  - Uses `createTask` / `createEvent`; shows field errors inline; closes and toasts on success
+- **Event details dialog**: colour square, title, full day, time range + duration, location, notes; Edit and Delete buttons
+  - Edit opens the same form pre-filled ("Edit event") and uses `updateEvent`
+  - Delete asks "Delete this event?" then `deleteEvent`
+- Dialog state driven from a small client store or URL param so the header, FAB and pages can all open it (pick the simpler, note the choice)
+- Enable the header "New" button (`PageHeader.tsx`) and the phone `Fab.tsx`
+- Date/time inputs: shadcn `popover`/`calendar` or native inputs — pick one and keep it consistent
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/components/items/NewItemDialog.tsx`, `TaskForm.tsx`, `EventForm.tsx`; `src/components/events/EventDetailsDialog.tsx`; modify `src/components/layout/PageHeader.tsx`, `Fab.tsx`.
+- Reference: `context/mockup/app-desktop.html` (New dialog, event details dialog).
+- Actions already exist (specs 08 and 11): `createTask`, `createEvent`, `updateEvent`, `deleteEvent`. Event times are wall times converted with the user's timezone on the server; all-day events store UTC dates (exclusive end).
+- Default dates/times must be computed in the user's timezone (`todayIn`, not the browser clock) and passed down as strings to avoid hydration mismatches.
+- No recurrence fields until spec 16. Calendar and Today pages don't exist yet (specs 13, 18), so the event details dialog needs a way to be exercised before then.
+- Testing: create a daily task, weekly task, timed event and all-day event and check the stored dates/instants for the user's timezone; validation (empty title, end before start); edit and delete an event; phone full-height sheet with no overflow; focus trap, Escape, labels; `npm run build` passes.
 
 ## History
 
