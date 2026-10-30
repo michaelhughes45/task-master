@@ -18,6 +18,8 @@ export interface TaskView {
   doneLate: boolean;
   minutesSpent: number | null;
   workNote: string | null;
+  // Part of a repeating series: changes ask which occurrences they're for.
+  repeats: boolean;
   // "Repeats daily"; null for a one-off task.
   repeatLabel: string | null;
 }

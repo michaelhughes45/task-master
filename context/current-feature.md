@@ -1,18 +1,35 @@
-# Current Feature
+# Current Feature: Recurrence Edit Scope (17)
 
-<!-- Feature name and short description -->
+When editing or deleting one occurrence of a repeating task or event, ask whether the change applies to **this one only**, **this and following**, or **all**, and apply it with exceptions or by splitting the series.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `EditScopeDialog` (`src/components/items/EditScopeDialog.tsx`): radio group per the mockup's "Delete repeating event" dialog — This event/task · This and following · All. Shown when saving an edit or confirming a delete on a repeating item.
+- Pure `src/lib/recurrence-edit.ts` (with tests) decides what to write:
+  - **This one, edit**: upsert an exception with the overrides for that occurrence
+  - **This one, delete**: upsert an exception with `cancelled: true`
+  - **This and following, edit**: end the original series at the occurrence before (`UNTIL` = previous occurrence; delete the series if it's the first occurrence) and create a new series from this occurrence with the new values; move later exceptions and completions to the new series where they still match
+  - **This and following, delete**: end the series at the occurrence before
+  - **All, edit**: update the series; keep exceptions whose occurrences still exist, drop the rest
+  - **All, delete**: delete the series (cascades exceptions and completions)
+- Server actions `updateOccurrence` / `deleteOccurrence` for tasks (`src/actions/tasks.ts`) and events (`src/actions/events.ts`), each in a `prisma.$transaction`, with session, Zod and ownership checks.
+- `EventDetailsDialog` Edit/Delete and `TaskRowMenu` rename/priority/delete go through the scope prompt for repeating items.
+- Task row menu "Move to…" date picker moves a single occurrence ("this one" with a `date` override).
+- Completions stay keyed by the original occurrence date.
 
 ## Notes
 
-<!-- Any extra notes -->
+- "This and following" on the very first occurrence equals "All".
+- `UNTIL` must use the same floating-time convention as the series (spec 15): wall time in the zone as if UTC; tasks and all-day events use date-only `UNTIL` (spec 16's builder only accepts date-only `UNTIL`, inclusive of that day).
+- Splitting a `COUNT` series: the old part needs `UNTIL` (or a reduced `COUNT`) and the new part the remaining count — cover in tests.
+- Spec 16 left open: editing a repeating event's form starts from the series' first date/times and exceptions aren't re-keyed when the series' time changes — "All, edit" must handle this (keep exceptions whose occurrences still exist, drop the rest).
+- Task rename/priority/delete are currently by task id (whole series); per-occurrence keys are `taskKey` (id@date) and `event.key`.
+- Testing: unit tests for all six cases incl. first-occurrence and `COUNT`; in the app: cancel one gym session, change the time of all future Spanish classes, delete the deep work series, checking calendar and to-dos after each; completions before a split are kept; `npm run build` passes.
+- Run the `date-logic-reviewer` agent when done.
 
 ## History
 

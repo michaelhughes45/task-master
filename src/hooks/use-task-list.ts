@@ -6,11 +6,15 @@ import {
   completeTask,
   createTask,
   deleteTask,
+  deleteTaskOccurrence,
   saveCompletionDetails,
   uncompleteTask,
   updateTask,
+  updateTaskOccurrence,
 } from "@/actions/tasks";
+import type { EditScope } from "@/lib/recurrence-edit";
 import { applyTaskChange, draftTask, taskKey, type TaskListChange } from "@/lib/task-list";
+import type { TaskOccurrenceEditInput } from "@/lib/validations/tasks";
 import type { ActionResult } from "@/types/actions";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { Priority, TaskView } from "@/types/tasks";
@@ -35,6 +39,14 @@ export function useTaskList(tasks: TaskView[], today: DateStr) {
       if (!result.success) toast.error(result.error);
       else onSuccess?.();
     });
+  }
+
+  // A repeating task changes by scope from this occurrence; a one-off task (no scope) as a whole.
+  function edit(task: TaskView, scope: EditScope | undefined, input: TaskOccurrenceEditInput) {
+    const within = scope && { scope, occurrenceDate: task.occurrenceDate };
+    run({ type: "update", id: task.id, within, ...input }, () =>
+      scope ? updateTaskOccurrence(task.id, task.occurrenceDate, scope, input) : updateTask(task.id, input),
+    );
   }
 
   function saveDetails(task: TaskView, details: CompletionDetails) {
@@ -72,14 +84,23 @@ export function useTaskList(tasks: TaskView[], today: DateStr) {
       const task = draftTask(crypto.randomUUID(), title, scope, day);
       run({ type: "add", task }, () => createTask({ title, scope, date: day }));
     },
-    rename(task: TaskView, title: string) {
-      run({ type: "update", id: task.id, title }, () => updateTask(task.id, { title }));
+    rename(task: TaskView, title: string, scope?: EditScope) {
+      edit(task, scope, { title });
     },
-    setPriority(task: TaskView, priority: Priority) {
-      run({ type: "update", id: task.id, priority }, () => updateTask(task.id, { priority }));
+    setPriority(task: TaskView, priority: Priority, scope?: EditScope) {
+      edit(task, scope, { priority });
     },
-    remove(task: TaskView) {
-      run({ type: "remove", id: task.id }, () => deleteTask(task.id));
+    remove(task: TaskView, scope?: EditScope) {
+      run({ type: "remove", id: task.id, within: scope && { scope, occurrenceDate: task.occurrenceDate } }, () =>
+        scope ? deleteTaskOccurrence(task.id, task.occurrenceDate, scope) : deleteTask(task.id),
+      );
+    },
+    // Moves a daily task to another day: one occurrence of a repeating task, or a one-off task
+    // (with its completion). It leaves this day's list.
+    move(task: TaskView, date: DateStr) {
+      run({ type: "remove", id: task.id, within: { scope: "this", occurrenceDate: task.occurrenceDate } }, () =>
+        task.repeats ? updateTaskOccurrence(task.id, task.occurrenceDate, "this", { date }) : updateTask(task.id, { date }),
+      );
     },
   };
 }

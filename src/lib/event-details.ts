@@ -42,12 +42,11 @@ function labels(event: EventView, tz: string) {
   return event.allDay ? allDayLabels(event) : timedLabels(event, tz);
 }
 
-// Call on the server: labels and form times are in the user's zone, never the browser's. The
-// labels describe the occurrence; a repeating event's form starts from its series.
+// Call on the server: labels and form times are in the user's zone, never the browser's. Both
+// describe the occurrence; saving a repeating one asks which occurrences the change is for.
 export function toEventDetails(event: EventView, tz: string): EventDetails {
-  const { date, dayLabel, timeLabel } = labels(event, tz);
+  const { date, dayLabel, timeLabel, startTime, endTime } = labels(event, tz);
   const { series } = event;
-  const form = series ? labels({ ...event, startAt: series.startAt, endAt: series.endAt }, tz) : labels(event, tz);
   return {
     id: event.id,
     title: event.title,
@@ -57,12 +56,13 @@ export function toEventDetails(event: EventView, tz: string): EventDetails {
     dayLabel,
     timeLabel,
     repeatLabel: series && describeRRule(series.rrule, date),
+    occurrenceStart: series && event.occurrenceStart.toISOString(),
     form: {
       title: event.title,
-      date: form.date,
+      date,
       allDay: event.allDay,
-      startTime: form.startTime,
-      endTime: form.endTime,
+      startTime,
+      endTime,
       location: event.location ?? "",
       notes: event.notes ?? "",
       color: event.color,

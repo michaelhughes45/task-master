@@ -17,9 +17,13 @@ function optionalText(max: number) {
 const time = z.string().refine(isWallTime, "Choose a valid time");
 
 export const eventIdSchema = z.string().min(1).max(64);
+// An occurrence's original start, as an ISO instant ("2026-10-28T13:00:00.000Z").
+export const occurrenceStartSchema = z.iso.datetime().transform((value) => new Date(value));
 
 // Timed events need both times on `date`, ending later the same day. All-day events ignore them.
-export const eventSchema = z
+// For one occurrence of a repeating event: `date` is the occurrence's, not the series' start,
+// so the rule is checked against the series' new start when the change is planned.
+export const occurrenceEventSchema = z
   .object({
     title: z.string().trim().min(1, "Enter a title").max(200, "Use 200 characters or fewer"),
     date: z.string().refine(isDateStr, "Choose a valid date"),
@@ -32,8 +36,6 @@ export const eventSchema = z
     rrule: rruleField,
   })
   .superRefine((event, ctx) => {
-    // Events repeat on their date's wall-clock weekday, like daily tasks.
-    checkRepeat(ctx, event.rrule, "DAILY", event.date);
     if (event.allDay) return;
     if (!event.startTime) ctx.addIssue({ code: "custom", path: ["startTime"], message: "Choose a start time" });
     if (!event.endTime) ctx.addIssue({ code: "custom", path: ["endTime"], message: "Choose an end time" });
@@ -41,5 +43,10 @@ export const eventSchema = z
       ctx.addIssue({ code: "custom", path: ["endTime"], message: END_BEFORE_START });
     }
   });
+
+// A new or one-off event starts on `date`, and repeats on its wall-clock weekday like daily tasks.
+export const eventSchema = occurrenceEventSchema.superRefine((event, ctx) =>
+  checkRepeat(ctx, event.rrule, "DAILY", event.date),
+);
 
 export type EventInput = z.infer<typeof eventSchema>;

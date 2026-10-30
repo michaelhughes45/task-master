@@ -65,9 +65,10 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
               disabled={isDraftTask(task)}
               onToggle={() => toggle(task)}
               actions={{
-                onRename: (newTitle) => list.rename(task, newTitle),
-                onPriorityChange: (priority) => list.setPriority(task, priority),
-                onDelete: () => list.remove(task),
+                onRename: (newTitle, scope) => list.rename(task, newTitle, scope),
+                onPriorityChange: (priority, scope) => list.setPriority(task, priority, scope),
+                onDelete: (scope) => list.remove(task, scope),
+                onMove: task.scope === "DAILY" ? (date) => list.move(task, date) : undefined,
               }}
               details={{
                 open: openDetails?.key === taskKey(task),

@@ -95,7 +95,8 @@ function NewItemBody({ target, titleRef, onClose }: NewItemBodyProps) {
 
 function eventFormInitial(target: NewItemTarget) {
   if (target.mode === "edit") {
-    return { initial: target.event.form, eventId: target.event.id };
+    const { form, id, occurrenceStart } = target.event;
+    return { initial: form, eventId: id, occurrenceStart };
   }
   const { date, startTime, endTime } = target.defaults;
   return {

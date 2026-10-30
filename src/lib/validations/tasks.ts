@@ -37,6 +37,13 @@ export const updateTaskSchema = z.object({
   rrule: rruleField,
 });
 
+// One field at a time from the row menu: rename, priority, or move (this occurrence only).
+export const taskOccurrenceEditSchema = z.object({
+  title: title.optional(),
+  priority: priority.optional(),
+  date: day.optional(),
+});
+
 export const completionDetailsSchema = z.object({
   minutesSpent: z
     .number()
@@ -56,4 +63,5 @@ export const completionDetailsSchema = z.object({
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type TaskOccurrenceEditInput = z.infer<typeof taskOccurrenceEditSchema>;
 export type CompletionDetailsInput = z.infer<typeof completionDetailsSchema>;

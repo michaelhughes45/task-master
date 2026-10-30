@@ -70,6 +70,7 @@ export function toTaskView(
       isDoneLate({ occurrenceDay: occurrence.date, scope: task.scope, completedAt: completion.completedAt, tz }),
     minutesSpent: completion?.minutesSpent ?? null,
     workNote: completion?.workNote ?? null,
+    repeats: task.rrule !== null,
     repeatLabel: task.rrule ? describeRRule(task.rrule, occurrence.occurrenceDate) : null,
   };
 }

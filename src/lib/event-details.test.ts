@@ -118,36 +118,34 @@ describe("toEventDetails", () => {
     expect(details.dayLabel).toBe("Friday, October 30 – Sunday, November 1");
   });
 
-  it("labels an occurrence and starts the form from the series", () => {
+  it("labels an occurrence and starts the form from it, with the series' rule", () => {
     // Gym, Mon/Wed/Fri 7:30–8:15 AM New York, from Monday Oct 26; this is the Nov 2 occurrence,
-    // after the fall-back change.
+    // after the fall-back change, moved to 9:00.
     const details = toEventDetails(
       event({
         title: "Gym",
-        startAt: new Date("2026-11-02T12:30:00Z"),
-        endAt: new Date("2026-11-02T13:15:00Z"),
-        series: {
-          rrule: "FREQ=WEEKLY;BYDAY=MO,WE,FR",
-          startAt: new Date("2026-10-26T11:30:00Z"),
-          endAt: new Date("2026-10-26T12:15:00Z"),
-        },
+        occurrenceStart: new Date("2026-11-02T12:30:00Z"),
+        startAt: new Date("2026-11-02T14:00:00Z"),
+        endAt: new Date("2026-11-02T14:45:00Z"),
+        series: { rrule: "FREQ=WEEKLY;BYDAY=MO,WE,FR" },
       }),
       NY,
     );
     expect(details).toMatchObject({
       dayLabel: "Monday, November 2",
-      timeLabel: "7:30 AM – 8:15 AM (45 min)",
+      timeLabel: "9:00 AM – 9:45 AM (45 min)",
       repeatLabel: "Weekly on Mon, Wed, Fri",
+      occurrenceStart: "2026-11-02T12:30:00.000Z",
     });
     expect(details.form).toMatchObject({
-      date: "2026-10-26",
-      startTime: "07:30",
-      endTime: "08:15",
+      date: "2026-11-02",
+      startTime: "09:00",
+      endTime: "09:45",
       rrule: "FREQ=WEEKLY;BYDAY=MO,WE,FR",
     });
   });
 
-  it("has no repeat label for a one-off event", () => {
-    expect(toEventDetails(event({}), NY).repeatLabel).toBeNull();
+  it("has no repeat label or occurrence for a one-off event", () => {
+    expect(toEventDetails(event({}), NY)).toMatchObject({ repeatLabel: null, occurrenceStart: null });
   });
 });

@@ -2,19 +2,35 @@
 
 import { Check, Clock3 } from "lucide-react";
 import { useRef, useState } from "react";
+import { EditScopeDialog } from "@/components/items/EditScopeDialog";
 import { TaskDetailsPanel } from "@/components/todos/TaskDetailsPanel";
 import { TaskRowMenu } from "@/components/todos/TaskRowMenu";
 import { Button } from "@/components/ui/button";
 import type { CompletionDetails } from "@/hooks/use-task-list";
 import { formatMinutes } from "@/lib/dates";
+import type { EditScope } from "@/lib/recurrence-edit";
 import { cn } from "@/lib/utils";
+import type { DateStr } from "@/types/dates";
 import type { Priority, TaskView } from "@/types/tasks";
 
+// A repeating task's changes come with the scope picked for them; a one-off task's without.
 interface TaskRowActions {
-  onRename: (title: string) => void;
-  onPriorityChange: (priority: Priority) => void;
-  onDelete: () => void;
+  onRename: (title: string, scope?: EditScope) => void;
+  onPriorityChange: (priority: Priority, scope?: EditScope) => void;
+  onDelete: (scope?: EditScope) => void;
+  // Daily tasks only.
+  onMove?: (date: DateStr) => void;
 }
+
+// A change to a repeating task waiting for its scope.
+type PendingChange = { kind: "rename"; title: string } | { kind: "priority"; priority: Priority } | { kind: "delete" };
+
+const SCOPE_PROMPTS = {
+  rename: { title: "Rename repeating task", confirmLabel: "Rename", allowThis: true },
+  // An occurrence's exception can't hold a priority.
+  priority: { title: "Change priority of repeating task", confirmLabel: "Save", allowThis: false },
+  delete: { title: "Delete repeating task", confirmLabel: "Delete", allowThis: true },
+} as const;
 
 interface TaskRowDetails {
   open: boolean;
@@ -40,7 +56,23 @@ interface TaskRowProps {
 
 export function TaskRow({ task, missed, disabled, onToggle, actions, details }: TaskRowProps) {
   const [editing, setEditing] = useState(false);
+  // Kept after the scope dialog closes, so its text doesn't change while it animates out.
+  const [pending, setPending] = useState<PendingChange>({ kind: "delete" });
+  const [scopeOpen, setScopeOpen] = useState(false);
   const clockRef = useRef<HTMLButtonElement>(null);
+
+  function change(next: PendingChange) {
+    if (!task.repeats) return apply(next);
+    setPending(next);
+    setScopeOpen(true);
+  }
+
+  function apply(next: PendingChange, scope?: EditScope) {
+    if (!actions) return;
+    if (next.kind === "rename") actions.onRename(next.title, scope);
+    else if (next.kind === "priority") actions.onPriorityChange(next.priority, scope);
+    else actions.onDelete(scope);
+  }
 
   function closeDetails(save?: CompletionDetails) {
     if (save) details.onSave(save);
@@ -78,7 +110,7 @@ export function TaskRow({ task, missed, disabled, onToggle, actions, details }: 
               title={task.title}
               onDone={(title) => {
                 setEditing(false);
-                if (title && title !== task.title) actions.onRename(title);
+                if (title && title !== task.title) change({ kind: "rename", title });
               }}
             />
           ) : (
@@ -123,12 +155,27 @@ export function TaskRow({ task, missed, disabled, onToggle, actions, details }: 
           <TaskRowMenu
             title={task.title}
             priority={task.priority}
+            day={task.day}
+            repeats={task.repeats}
             disabled={disabled}
             onRename={() => setEditing(true)}
-            onPriorityChange={actions.onPriorityChange}
-            onDelete={actions.onDelete}
+            onPriorityChange={(priority) => change({ kind: "priority", priority })}
+            onDelete={() => change({ kind: "delete" })}
+            onMove={actions.onMove}
           />
         )}
+        <EditScopeDialog
+          open={scopeOpen}
+          onOpenChange={setScopeOpen}
+          noun="task"
+          destructive={pending.kind === "delete"}
+          description={pending.kind === "delete" ? deleteWarning(task) : undefined}
+          {...SCOPE_PROMPTS[pending.kind]}
+          onConfirm={(scope) => {
+            setScopeOpen(false);
+            apply(pending, scope);
+          }}
+        />
       </div>
       {details.open && (
         <TaskDetailsPanel
@@ -157,6 +204,12 @@ function TaskTags({ task, missed }: { task: TaskView; missed: boolean }) {
       )}
     </div>
   );
+}
+
+// Deleting removes completions with their time and notes, so say so before it happens.
+function deleteWarning(task: TaskView) {
+  const logged = "Time spent and notes logged on the deleted tasks are removed too.";
+  return task.done ? `This one is marked done. ${logged}` : logged;
 }
 
 // Enter or leaving the field saves; Escape cancels.
