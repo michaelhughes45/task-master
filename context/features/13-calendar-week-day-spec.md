@@ -20,7 +20,7 @@ Build `/calendar` with the week view (default on desktop) and day view (default 
 ## Files to Create / Modify
 
 1. `src/app/(app)/calendar/page.tsx`
-2. `src/components/calendar/calendar-toolbar.tsx`, `time-grid.tsx`, `day-column.tsx`, `event-block.tsx`, `now-line.tsx`, `all-day-row.tsx`
+2. `src/components/calendar/CalendarToolbar.tsx`, `TimeGrid.tsx`, `DayColumn.tsx`, `EventBlock.tsx`, `NowLine.tsx`, `AllDayRow.tsx`
 3. `src/lib/calendar-layout.ts` (+ tests)
 
 ## Key Gotchas

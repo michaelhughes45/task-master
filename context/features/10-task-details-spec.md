@@ -21,8 +21,8 @@ Let the user record how long a task took and what they worked on. The prompt app
 
 ## Files to Create / Modify
 
-1. `src/components/todos/task-row.tsx`
-2. `src/components/todos/task-details-panel.tsx`
+1. `src/components/todos/TaskRow.tsx`
+2. `src/components/todos/TaskDetailsPanel.tsx`
 
 ## Testing
 

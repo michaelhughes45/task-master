@@ -30,7 +30,7 @@ Build the signed-in layout from the mockup: sidebar on desktop, bottom tab bar o
 ## Files to Create / Modify
 
 1. `src/app/(app)/layout.tsx`
-2. `src/components/layout/app-sidebar.tsx`, `bottom-tabs.tsx`, `page-header.tsx`, `user-menu.tsx`, `fab.tsx`, `timezone-sync.tsx`
+2. `src/components/layout/AppSidebar.tsx`, `BottomTabs.tsx`, `PageHeader.tsx`, `UserMenu.tsx`, `Fab.tsx`, `TimezoneSync.tsx`
 3. `src/app/(app)/{today,calendar,todos,review,settings}/page.tsx`
 4. `src/components/settings/*`
 5. `src/actions/settings.ts` (+ tests)

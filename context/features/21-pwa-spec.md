@@ -17,7 +17,7 @@ Make Task Master installable on phones and computers: a web app manifest, icons,
 
 1. `src/app/manifest.ts`, `public/icons/*`, `public/sw.js`
 2. `scripts/generate-icons.ts`
-3. `src/app/layout.tsx`, `src/components/pwa/register-sw.tsx`, `src/components/settings/install-app.tsx`
+3. `src/app/layout.tsx`, `src/components/pwa/RegisterServiceWorker.tsx`, `src/components/settings/InstallApp.tsx`
 
 ## Testing
 

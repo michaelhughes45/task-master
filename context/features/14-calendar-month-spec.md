@@ -17,7 +17,7 @@ Add the month view to `/calendar`: a Monday-start grid with event chips per day.
 
 ## Files to Create / Modify
 
-1. `src/components/calendar/month-grid.tsx`, `month-cell.tsx`
+1. `src/components/calendar/MonthGrid.tsx`, `MonthCell.tsx`
 2. `src/app/(app)/calendar/page.tsx`
 3. `src/lib/dates.ts`: `monthGridRange(day)` (+ tests: a month starting on Monday, one starting on Sunday, February 2027, a 6-week month)
 

@@ -22,9 +22,9 @@ Wire the header "New" button and the phone "+" button to a dialog that creates a
 
 ## Files to Create / Modify
 
-1. `src/components/items/new-item-dialog.tsx`, `task-form.tsx`, `event-form.tsx`
-2. `src/components/events/event-details-dialog.tsx`
-3. `src/components/layout/page-header.tsx`, `fab.tsx` (enable the buttons)
+1. `src/components/items/NewItemDialog.tsx`, `TaskForm.tsx`, `EventForm.tsx`
+2. `src/components/events/EventDetailsDialog.tsx`
+3. `src/components/layout/PageHeader.tsx`, `Fab.tsx` (enable the buttons)
 
 ## Testing
 
