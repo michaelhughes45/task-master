@@ -7,6 +7,8 @@ const NY = "America/New_York";
 function event(overrides: Partial<EventView>): EventView {
   return {
     id: "ev1",
+    key: "ev1",
+    occurrenceStart: new Date("2026-10-28T13:00:00Z"),
     title: "Dentist",
     notes: null,
     location: null,

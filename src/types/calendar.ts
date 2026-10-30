@@ -6,6 +6,8 @@ export type CalendarView = "day" | "week" | "month";
 
 export interface CalendarEvent {
   id: string;
+  // Unique per occurrence; a repeating event shares its id.
+  key: string;
   title: string;
   color: EventColor;
   // For the details dialog, formatted on the server.

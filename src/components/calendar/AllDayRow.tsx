@@ -17,7 +17,7 @@ export function AllDayRow({ columns, gridClass }: AllDayRowProps) {
       {columns.map((column) => (
         <ul key={column.day} className="flex min-w-0 flex-col gap-1 border-l p-1">
           {column.allDay.map((event) => (
-            <li key={event.id}>
+            <li key={event.key}>
               <AllDayEvent event={event} />
             </li>
           ))}

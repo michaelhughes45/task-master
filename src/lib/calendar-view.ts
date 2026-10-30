@@ -70,7 +70,7 @@ function daySpan(event: EventView, day: DateStr, tz: string): DaySpan | null {
   const dayEnd = dayEndInstant(day, tz);
   if (!touchesDay(event, day, tz)) return null;
   return {
-    id: event.id,
+    id: event.key,
     start: event.startAt <= dayStart ? 0 : instantToWallMinutes(event.startAt, tz),
     end: event.endAt >= dayEnd ? DAY_MINUTES : instantToWallMinutes(event.endAt, tz),
   };
@@ -96,7 +96,7 @@ interface ColumnsInput {
 
 // Everything the time grid draws, computed on the server in the user's timezone.
 export function buildCalendarColumns({ events, days, today, view, tz }: ColumnsInput) {
-  const items = new Map(events.map((event) => [event.id, calendarEvent(event, tz)]));
+  const items = new Map(events.map((event) => [event.key, calendarEvent(event, tz)]));
   const timed = events.filter((event) => !event.allDay);
   const allSpans: DaySpan[] = [];
 
@@ -109,9 +109,9 @@ export function buildCalendarColumns({ events, days, today, view, tz }: ColumnsI
       heading: view === "day" ? formatDayLong(day).split(",")[0] : formatDayShort(day).split(",")[0],
       dayNumber: Number(day.slice(8)),
       isToday: day === today,
-      allDay: events.filter((event) => event.allDay && coversDay(event, day)).map((event) => items.get(event.id)!),
+      allDay: events.filter((event) => event.allDay && coversDay(event, day)).map((event) => items.get(event.key)!),
       timed: layoutDay(spans).map((layout) => {
-        const event = timed.find(({ id }) => id === layout.id)!;
+        const event = timed.find(({ key }) => key === layout.id)!;
         const span = spanById.get(layout.id)!;
         return {
           ...items.get(layout.id)!,
@@ -127,7 +127,7 @@ export function buildCalendarColumns({ events, days, today, view, tz }: ColumnsI
 }
 
 function calendarEvent(event: EventView, tz: string): CalendarEvent {
-  return { id: event.id, title: event.title, color: event.color, details: toEventDetails(event, tz) };
+  return { id: event.id, key: event.key, title: event.title, color: event.color, details: toEventDetails(event, tz) };
 }
 
 interface MonthInput {
@@ -142,7 +142,7 @@ interface MonthInput {
 // order. Multi-day events show on every day they cover.
 export function buildMonthDays({ events, date, today, tz }: MonthInput): MonthDay[] {
   const month = date.slice(0, 7);
-  const items = new Map(events.map((event) => [event.id, calendarEvent(event, tz)]));
+  const items = new Map(events.map((event) => [event.key, calendarEvent(event, tz)]));
 
   return calendarDays("month", date).map((day) => {
     const dayEvents = events.filter((event) =>
@@ -154,7 +154,7 @@ export function buildMonthDays({ events, date, today, tz }: MonthInput): MonthDa
       label: formatDayLong(day),
       inMonth: day.slice(0, 7) === month,
       isToday: day === today,
-      chips: dayEvents.slice(0, MONTH_CHIPS).map((event) => items.get(event.id)!),
+      chips: dayEvents.slice(0, MONTH_CHIPS).map((event) => items.get(event.key)!),
       moreCount: Math.max(0, dayEvents.length - MONTH_CHIPS),
     };
   });

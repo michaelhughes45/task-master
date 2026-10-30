@@ -42,7 +42,7 @@ export function MonthCell({ cell, index }: MonthCellProps) {
       {cell.chips.length > 0 && (
         <ul className="mt-[3px] flex flex-col gap-[3px]">
           {cell.chips.map((event) => (
-            <li key={event.id}>
+            <li key={event.key}>
               <MonthEventChip event={event} />
             </li>
           ))}

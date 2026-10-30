@@ -10,7 +10,7 @@ import {
   uncompleteTask,
   updateTask,
 } from "@/actions/tasks";
-import { applyTaskChange, draftTask, type TaskListChange } from "@/lib/task-list";
+import { applyTaskChange, draftTask, taskKey, type TaskListChange } from "@/lib/task-list";
 import type { ActionResult } from "@/types/actions";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { Priority, TaskView } from "@/types/tasks";
@@ -38,8 +38,8 @@ export function useTaskList(tasks: TaskView[], today: DateStr) {
   }
 
   function saveDetails(task: TaskView, details: CompletionDetails) {
-    run({ type: "details", id: task.id, ...details, today }, () =>
-      saveCompletionDetails(task.id, task.day, details),
+    run({ type: "details", key: taskKey(task), ...details, today }, () =>
+      saveCompletionDetails(task.id, task.occurrenceDate, details),
     );
   }
 
@@ -48,15 +48,15 @@ export function useTaskList(tasks: TaskView[], today: DateStr) {
     toggle(task: TaskView) {
       const done = !task.done;
       if (done) {
-        run({ type: "toggle", id: task.id, done, today }, () => completeTask(task.id, task.day));
+        run({ type: "toggle", key: taskKey(task), done, today }, () => completeTask(task.id, task.occurrenceDate));
         return;
       }
       // Unticking deletes the completion with its details, so offer them back.
       const { minutesSpent, workNote } = task;
       const hadDetails = minutesSpent !== null || workNote !== null;
       run(
-        { type: "toggle", id: task.id, done, today },
-        () => uncompleteTask(task.id, task.day),
+        { type: "toggle", key: taskKey(task), done, today },
+        () => uncompleteTask(task.id, task.occurrenceDate),
         hadDetails
           ? () =>
               toast(`Unticked ${task.title}`, {

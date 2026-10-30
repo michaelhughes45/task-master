@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AddTaskInput } from "@/components/todos/AddTaskInput";
 import { TaskRow } from "@/components/todos/TaskRow";
 import type { TaskListHandlers } from "@/hooks/use-task-list";
-import { countDone, isDraftTask, isMissed } from "@/lib/task-list";
+import { countDone, isDraftTask, isMissed, taskKey } from "@/lib/task-list";
 import type { DateStr } from "@/types/dates";
 import type { TaskView } from "@/types/tasks";
 
@@ -19,9 +19,9 @@ interface TaskListCardProps {
   onAdd: (title: string) => void;
 }
 
-// The details panel open in this list, if any. Only one at a time.
+// The details panel open in this list, if any (by taskKey). Only one at a time.
 interface OpenDetails {
-  id: string;
+  key: string;
   autoFocus: boolean;
 }
 
@@ -31,7 +31,8 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
 
   // Ticking opens the details prompt; unticking closes it.
   function toggle(task: TaskView) {
-    setOpenDetails(task.done ? (prev) => (prev?.id === task.id ? null : prev) : { id: task.id, autoFocus: false });
+    const key = taskKey(task);
+    setOpenDetails(task.done ? (prev) => (prev?.key === key ? null : prev) : { key, autoFocus: false });
     list.toggle(task);
   }
 
@@ -58,7 +59,7 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
         <ul>
           {tasks.map((task) => (
             <TaskRow
-              key={task.id}
+              key={taskKey(task)}
               task={task}
               missed={isMissed(task, today)}
               disabled={isDraftTask(task)}
@@ -69,10 +70,12 @@ export function TaskListCard({ title, subtitle, tasks, today, emptyText, addLabe
                 onDelete: () => list.remove(task),
               }}
               details={{
-                open: openDetails?.id === task.id,
+                open: openDetails?.key === taskKey(task),
                 autoFocus: openDetails?.autoFocus ?? false,
                 onToggle: () =>
-                  setOpenDetails((prev) => (prev?.id === task.id ? null : { id: task.id, autoFocus: true })),
+                  setOpenDetails((prev) =>
+                    prev?.key === taskKey(task) ? null : { key: taskKey(task), autoFocus: true },
+                  ),
                 onClose: () => setOpenDetails(null),
                 onSave: (details) => list.saveDetails(task, details),
               }}
