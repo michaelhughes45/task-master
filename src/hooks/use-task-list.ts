@@ -2,11 +2,23 @@
 
 import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
-import { completeTask, createTask, deleteTask, uncompleteTask, updateTask } from "@/actions/tasks";
+import {
+  completeTask,
+  createTask,
+  deleteTask,
+  saveCompletionDetails,
+  uncompleteTask,
+  updateTask,
+} from "@/actions/tasks";
 import { applyTaskChange, draftTask, type TaskListChange } from "@/lib/task-list";
 import type { ActionResult } from "@/types/actions";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { Priority, TaskView } from "@/types/tasks";
+
+export interface CompletionDetails {
+  minutesSpent: number | null;
+  workNote: string | null;
+}
 
 export type TaskListHandlers = Omit<ReturnType<typeof useTaskList>, "tasks" | "add">;
 
@@ -16,22 +28,46 @@ export function useTaskList(tasks: TaskView[], today: DateStr) {
   const [, startTransition] = useTransition();
   const [optimisticTasks, applyChange] = useOptimistic(tasks, applyTaskChange);
 
-  function run(change: TaskListChange, action: () => Promise<ActionResult<unknown>>) {
+  function run(change: TaskListChange, action: () => Promise<ActionResult<unknown>>, onSuccess?: () => void) {
     startTransition(async () => {
       applyChange(change);
       const result = await action();
       if (!result.success) toast.error(result.error);
+      else onSuccess?.();
     });
+  }
+
+  function saveDetails(task: TaskView, details: CompletionDetails) {
+    run({ type: "details", id: task.id, ...details, today }, () =>
+      saveCompletionDetails(task.id, task.day, details),
+    );
   }
 
   return {
     tasks: optimisticTasks,
     toggle(task: TaskView) {
       const done = !task.done;
-      run({ type: "toggle", id: task.id, done, today }, () =>
-        done ? completeTask(task.id, task.day) : uncompleteTask(task.id, task.day),
+      if (done) {
+        run({ type: "toggle", id: task.id, done, today }, () => completeTask(task.id, task.day));
+        return;
+      }
+      // Unticking deletes the completion with its details, so offer them back.
+      const { minutesSpent, workNote } = task;
+      const hadDetails = minutesSpent !== null || workNote !== null;
+      run(
+        { type: "toggle", id: task.id, done, today },
+        () => uncompleteTask(task.id, task.day),
+        hadDetails
+          ? () =>
+              toast(`Unticked ${task.title}`, {
+                description: "Its time spent and notes were cleared.",
+                duration: 8000,
+                action: { label: "Undo", onClick: () => saveDetails(task, { minutesSpent, workNote }) },
+              })
+          : undefined,
       );
     },
+    saveDetails,
     add(title: string, scope: TaskScope, day: DateStr) {
       const task = draftTask(crypto.randomUUID(), title, scope, day);
       run({ type: "add", task }, () => createTask({ title, scope, date: day }));

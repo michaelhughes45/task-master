@@ -7,6 +7,8 @@ export type TaskListChange =
   | { type: "toggle"; id: string; done: boolean; today: DateStr }
   | { type: "add"; task: TaskView }
   | { type: "update"; id: string; title?: string; priority?: Priority }
+  // Saving details also ticks the task.
+  | { type: "details"; id: string; minutesSpent: number | null; workNote: string | null; today: DateStr }
   | { type: "remove"; id: string };
 
 const DRAFT_PREFIX = "draft:";
@@ -45,6 +47,11 @@ export function isDraftTask(task: TaskView) {
   return task.id.startsWith(DRAFT_PREFIX);
 }
 
+// Ticking keeps an existing completion's lateness; a new one is late once the occurrence has ended.
+function markDone(task: TaskView, today: DateStr): TaskView {
+  return { ...task, done: true, doneLate: task.done ? task.doneLate : isPastOccurrence(task, today) };
+}
+
 export function applyTaskChange(tasks: TaskView[], change: TaskListChange): TaskView[] {
   switch (change.type) {
     case "add":
@@ -66,7 +73,11 @@ export function applyTaskChange(tasks: TaskView[], change: TaskListChange): Task
         if (!change.done) {
           return { ...task, done: false, doneLate: false, minutesSpent: null, workNote: null };
         }
-        return { ...task, done: true, doneLate: task.done ? task.doneLate : isPastOccurrence(task, change.today) };
+        return markDone(task, change.today);
       });
+    case "details": {
+      const { id, minutesSpent, workNote, today } = change;
+      return tasks.map((task) => (task.id === id ? { ...markDone(task, today), minutesSpent, workNote } : task));
+    }
   }
 }
