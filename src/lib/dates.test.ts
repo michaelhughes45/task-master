@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addDays,
+  addMonths,
   addWeeks,
   dayEndInstant,
   dayStartInstant,
   formatDayLong,
   formatDayShort,
   formatMinutes,
+  formatMonth,
   formatTime,
   formatWeekRange,
   fromDbDate,
@@ -17,6 +19,7 @@ import {
   isDoneLate,
   isPastDay,
   isWallTime,
+  monthGridRange,
   parseDateParam,
   resolveTimezone,
   todayIn,
@@ -129,6 +132,56 @@ describe("addDays / addWeeks", () => {
     expect(addDays("2028-02-29", 1)).toBe("2028-03-01");
     expect(addDays("2027-02-28", 1)).toBe("2027-03-01");
     expect(addWeeks("2028-02-26", 1)).toBe("2028-03-04");
+  });
+});
+
+describe("addMonths", () => {
+  it("keeps the day of the month", () => {
+    expect(addMonths("2026-10-28", 1)).toBe("2026-11-28");
+    expect(addMonths("2026-10-28", -1)).toBe("2026-09-28");
+  });
+
+  it("crosses year ends", () => {
+    expect(addMonths("2026-12-15", 1)).toBe("2027-01-15");
+    expect(addMonths("2027-01-15", -1)).toBe("2026-12-15");
+  });
+
+  it("clamps to the last day of a shorter month", () => {
+    expect(addMonths("2027-01-31", 1)).toBe("2027-02-28");
+    expect(addMonths("2028-01-31", 1)).toBe("2028-02-29");
+    expect(addMonths("2026-03-31", -1)).toBe("2026-02-28");
+    expect(addMonths("2026-10-31", 1)).toBe("2026-11-30");
+  });
+});
+
+describe("monthGridRange", () => {
+  it("starts on the 1st when the month starts on a Monday", () => {
+    // June 2026: Mon Jun 1 – Tue Jun 30.
+    expect(monthGridRange("2026-06-17")).toEqual({ start: "2026-06-01", end: "2026-07-05" });
+  });
+
+  it("starts six days back when the month starts on a Sunday", () => {
+    // March 2026: Sun Mar 1 – Tue Mar 31, six weeks.
+    expect(monthGridRange("2026-03-01")).toEqual({ start: "2026-02-23", end: "2026-04-05" });
+  });
+
+  it("is exactly four weeks for February 2027", () => {
+    // Mon Feb 1 – Sun Feb 28.
+    expect(monthGridRange("2027-02-10")).toEqual({ start: "2027-02-01", end: "2027-02-28" });
+  });
+
+  it("covers a six-week month", () => {
+    // August 2026: Sat Aug 1 – Mon Aug 31.
+    expect(monthGridRange("2026-08-31")).toEqual({ start: "2026-07-27", end: "2026-09-06" });
+  });
+
+  it("covers October 2026 in five weeks", () => {
+    expect(monthGridRange("2026-10-28")).toEqual({ start: "2026-09-28", end: "2026-11-01" });
+  });
+
+  it("handles a leap February and a year end", () => {
+    expect(monthGridRange("2028-02-29")).toEqual({ start: "2028-01-31", end: "2028-03-05" });
+    expect(monthGridRange("2026-12-31")).toEqual({ start: "2026-11-30", end: "2027-01-03" });
   });
 });
 
@@ -363,6 +416,11 @@ describe("formatters", () => {
     expect(formatDayLong("2026-10-28")).toBe("Wednesday, October 28");
     expect(formatDayShort("2026-10-28")).toBe("Wed, Oct 28");
     expect(formatDayLong("2028-02-29")).toBe("Tuesday, February 29");
+  });
+
+  it("formats months", () => {
+    expect(formatMonth("2026-10-28")).toBe("October 2026");
+    expect(formatMonth("2027-01-01")).toBe("January 2027");
   });
 
   it("formats a week within one month", () => {

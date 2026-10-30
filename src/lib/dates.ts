@@ -68,6 +68,21 @@ export function weekDays(weekStart: DateStr): DateStr[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 }
 
+// Same day of the month n months away, clamped to that month's last day (Jan 31 → Feb 28).
+export function addMonths(day: DateStr, n: number): DateStr {
+  const { year, month, date } = parts(day);
+  const lastDate = new Date(Date.UTC(year, month + n + 1, 0)).getUTCDate();
+  return toDateStr(new Date(Date.UTC(year, month + n, Math.min(date, lastDate))));
+}
+
+// The month view's grid: the Monday on or before the 1st to the Sunday on or after the last
+// day, both inclusive. Four to six whole weeks.
+export function monthGridRange(day: DateStr) {
+  const first = `${day.slice(0, 7)}-01`;
+  const last = addDays(addMonths(first, 1), -1);
+  return { start: weekStartOf(first), end: addDays(weekStartOf(last), 6) };
+}
+
 // DateStrs sort lexicographically in calendar order.
 export function isBefore(dayA: DateStr, dayB: DateStr) {
   return dayA < dayB;
@@ -150,6 +165,11 @@ export function isDoneLate({ occurrenceDay, scope, completedAt, tz }: DoneLateIn
 // "Wednesday, October 28"
 export function formatDayLong(day: DateStr) {
   return formatDay(day, "EEEE, MMMM d");
+}
+
+// "October 2026"
+export function formatMonth(day: DateStr) {
+  return formatDay(day, "MMMM yyyy");
 }
 
 // "Wed, Oct 28"

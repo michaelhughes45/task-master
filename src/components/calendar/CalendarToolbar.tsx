@@ -9,6 +9,7 @@ import type { DateStr } from "@/types/dates";
 const VIEWS = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
 ] as const;
 
 const SEGMENT_CLASS =
@@ -22,8 +23,6 @@ interface CalendarToolbarProps {
 
 // Every control is a link, so the URL holds the view and date and the back button works.
 export function CalendarToolbar({ view, date, label }: CalendarToolbarProps) {
-  const unit = view === "day" ? "day" : "week";
-
   return (
     <nav aria-label="Calendar" className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
       <Link
@@ -35,14 +34,14 @@ export function CalendarToolbar({ view, date, label }: CalendarToolbarProps) {
       <div className="flex">
         <Link
           href={calendarHref(view, stepDate(view, date, -1))}
-          aria-label={`Previous ${unit}`}
+          aria-label={`Previous ${view}`}
           className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-11 md:size-9")}
         >
           <ChevronLeft className="size-[18px]" aria-hidden="true" />
         </Link>
         <Link
           href={calendarHref(view, stepDate(view, date, 1))}
-          aria-label={`Next ${unit}`}
+          aria-label={`Next ${view}`}
           className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-11 md:size-9")}
         >
           <ChevronRight className="size-[18px]" aria-hidden="true" />
@@ -69,10 +68,6 @@ export function CalendarToolbar({ view, date, label }: CalendarToolbarProps) {
             </Link>
           );
         })}
-        {/* The month view arrives in spec 14. */}
-        <span aria-disabled="true" title="Coming soon" className={cn(SEGMENT_CLASS, "text-muted-foreground/50")}>
-          Month
-        </span>
       </div>
     </nav>
   );
