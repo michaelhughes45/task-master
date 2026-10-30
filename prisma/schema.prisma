@@ -21,6 +21,7 @@ model User {
   sessions Session[]
   accounts Account[]
   tasks    Task[]
+  events   Event[]
 
   @@map("user")
 }
@@ -112,4 +113,29 @@ model TaskCompletion {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, occurrenceDate])
+}
+
+enum EventColor {
+  BLUE
+  GREEN
+}
+
+model Event {
+  id        String     @id @default(cuid())
+  userId    String
+  title     String
+  notes     String?
+  location  String?
+  color     EventColor @default(BLUE)
+  allDay    Boolean    @default(false)
+  // Timed: UTC instants. All-day: the first day and the day after the last day (exclusive),
+  // each at 00:00 UTC; read back with fromDbDate, never in the user's timezone.
+  startAt   DateTime
+  endAt     DateTime
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startAt])
 }

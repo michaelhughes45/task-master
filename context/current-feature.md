@@ -1,18 +1,34 @@
-# Current Feature
+# Current Feature: Events Backend (11)
 
-<!-- Feature name and short description -->
+One-off calendar events (timed or all-day): Prisma model, range query, server actions and demo seed. No UI (specs 12–14); recurrence comes in spec 15.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Prisma `Event` model (no `rrule` / exceptions yet): `id`, `userId`, `title`, `notes?`, `location?`, `color` enum (`BLUE` | `GREEN`, default `BLUE`), `allDay` (default false), `startAt`, `endAt` (UTC instants), `createdAt`/`updatedAt`; index `[userId, startAt]`; cascade from `User`. Migration `events` via `prisma migrate dev` on Neon `development`.
+- All-day storage convention documented in the model comment.
+- `src/lib/db/events.ts` (`server-only`): `getEventsInRange(userId, rangeStart, rangeEnd)` returns events overlapping the range (`startAt < rangeEnd && endAt > rangeStart`), ordered by `allDay desc, startAt`, as `EventView` (`src/types/events.ts`: id, title, notes, location, color, allDay, startAt, endAt).
+- `src/lib/validations/events.ts`: Zod schema for `{ title, date, startTime?, endTime?, allDay, location?, notes?, color }` with the project's limits (trimmed title, max lengths, empty → null).
+- `src/actions/events.ts` returning `ActionResult`, with `requireUser`/session, Zod, ownership checks, and `revalidatePath` for `/today` and `/calendar`:
+  - `createEvent`: wall times → UTC with `wallTimeToInstant` in the user's timezone; end must be after start (an earlier end time is an error for now, not "next day").
+  - `updateEvent(id, same fields)` (ownership in the same query or verified first).
+  - `deleteEvent(id)` (`deleteMany { id, userId }`, count 0 → not found).
+- Seed: extend `prisma/seed.ts` with the mockup's events for the current week (gym, deep work blocks, lunch, dentist, Spanish class, haircut, movie night, hike, party, meal prep, weekly review) on the right weekdays relative to today; replaced in one transaction so re-runs are idempotent.
+- Tests: end before start rejected; NY summer and winter wall time → UTC; ownership enforced; range query includes an event that starts before the range and ends inside it. `npm test`, `npm run lint` and `npm run build` pass.
 
 ## Notes
 
-<!-- Any extra notes -->
+- **All-day convention (decided: follow the docs):** all-day `startAt` = first day at 00:00 UTC, `endAt` = day after the last day at 00:00 UTC (exclusive), read back with `fromDbDate`. Overrides the spec's "start of the day in the user's timezone".
+- Because of that, `getEventsInRange(userId, firstDay, lastDay, tz)` takes days (inclusive) plus the timezone instead of two instants: timed events are compared against the zone's day bounds, all-day events against UTC dates.
+- Repeating mockup events (gym, deep work) are seeded as one-off rows per day until spec 15.
+- `color` is an enum here (`BLUE` | `GREEN`), not the overview's free `String?`.
+- Reuse existing patterns from spec 08: `ActionResult` (`src/types/actions.ts`), `z.flattenError` for `fieldErrors`, `findFirst {id, userId}` before updates, `toDbDate`/`fromDbDate`, `wallTimeToInstant`, `resolveTimezone`, `dayStartInstant`/`dayEndInstant` from `src/lib/dates.ts`.
+- Mock `@/lib/session`, `@/lib/prisma` and `next/cache` in tests; pin the clock with `vi.setSystemTime`. Tests run under `TZ=Pacific/Auckland`.
+- Seed runs against `development` only (refuses `NODE_ENV=production`); demo user is `America/New_York`.
+- Event times for the seed come from the mockup (`context/mockup/app-desktop.html`, `today-phone.html`).
 
 ## History
 

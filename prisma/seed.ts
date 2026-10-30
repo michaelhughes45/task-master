@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { generateRandomString, hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../src/generated/prisma/client";
-import type { Priority } from "../src/generated/prisma/enums";
+import type { EventColor, Priority } from "../src/generated/prisma/enums";
 import { addDays, isBefore, todayIn, toDbDate, wallTimeToInstant, weekStartOf } from "../src/lib/dates";
 import {
   DEMO_USER_EMAIL,
@@ -47,6 +47,45 @@ const WEEKLY: SeedTask[] = [
   },
   { title: "Plan next week's meals" },
   { title: "Long run (10 km)" },
+];
+
+interface SeedEvent {
+  title: string;
+  start: string;
+  end: string;
+  color?: EventColor;
+  location?: string;
+}
+
+// The mockup's events, by weekday (0 = Monday). Gym, deep work, Spanish class and the weekly
+// review repeat in the mockup; they're one-off rows here until recurrence (spec 15).
+const GYM: SeedEvent = { title: "Gym", start: "07:30", end: "08:15", color: "GREEN", location: "Northside Fitness" };
+const deepWork = (end: string): SeedEvent => ({ title: "Deep work: project proposal", start: "09:00", end });
+
+const EVENTS: SeedEvent[][] = [
+  [GYM, deepWork("12:00"), { title: "Grocery pickup", start: "18:00", end: "18:45" }],
+  [
+    deepWork("12:00"),
+    { title: "Call with insurance", start: "14:00", end: "14:30" },
+    { title: "Dinner with friends", start: "19:00", end: "21:00", location: "Osteria on 5th" },
+  ],
+  [
+    GYM,
+    deepWork("12:00"),
+    { title: "Lunch with Sam", start: "13:00", end: "13:30" },
+    { title: "Dentist", start: "16:00", end: "16:45", location: "Dr. Patel, Suite 210" },
+    { title: "Spanish class", start: "19:00", end: "20:00", color: "GREEN" },
+  ],
+  [deepWork("12:00"), { title: "Haircut", start: "17:30", end: "18:15" }],
+  [GYM, deepWork("11:00"), { title: "Movie night", start: "20:00", end: "22:00" }],
+  [
+    { title: "Hike: Ridge Loop", start: "09:00", end: "13:00", color: "GREEN" },
+    { title: "Halloween party", start: "19:30", end: "22:30" },
+  ],
+  [
+    { title: "Meal prep", start: "15:00", end: "16:30", color: "GREEN" },
+    { title: "Weekly review", start: "18:00", end: "18:30" },
+  ],
 ];
 
 // Existing users keep their id (and sessions); the password is reset to the demo one.
@@ -110,9 +149,22 @@ async function main() {
     return tasks.map((task) => ({ task, day, scope: "DAILY" as const }));
   });
   const weekly = WEEKLY.map((task) => ({ task, day: monday, scope: "WEEKLY" as const }));
+  const events = EVENTS.flatMap((dayEvents, i) => {
+    const day = addDays(monday, i);
+    return dayEvents.map((event) => ({
+      userId,
+      title: event.title,
+      color: event.color,
+      location: event.location,
+      startAt: wallTimeToInstant(day, event.start, DEMO_USER_TIMEZONE),
+      endAt: wallTimeToInstant(day, event.end, DEMO_USER_TIMEZONE),
+    }));
+  });
 
   await prisma.$transaction([
     prisma.task.deleteMany({ where: { userId } }),
+    prisma.event.deleteMany({ where: { userId } }),
+    prisma.event.createMany({ data: events }),
     ...[...daily, ...weekly].map(({ task, day, scope }, i, all) =>
       prisma.task.create({
         data: {
@@ -129,7 +181,9 @@ async function main() {
     ),
   ]);
 
-  console.log(`Seeded ${DEMO_USER_EMAIL}: ${daily.length} daily and ${weekly.length} weekly tasks for the week of ${monday}`);
+  console.log(
+    `Seeded ${DEMO_USER_EMAIL}: ${daily.length} daily and ${weekly.length} weekly tasks and ${events.length} events for the week of ${monday}`,
+  );
 }
 
 main()
