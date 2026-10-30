@@ -20,6 +20,7 @@ model User {
 
   sessions Session[]
   accounts Account[]
+  tasks    Task[]
 
   @@map("user")
 }
@@ -70,4 +71,45 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum TaskScope {
+  DAILY
+  WEEKLY
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+model Task {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  notes     String?
+  scope     TaskScope
+  priority  Priority  @default(NORMAL)
+  date      DateTime  @db.Date // DAILY: the day; WEEKLY: the Monday of the week
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions TaskCompletion[]
+
+  @@index([userId, date])
+}
+
+model TaskCompletion {
+  id             String   @id @default(cuid())
+  taskId         String
+  occurrenceDate DateTime @db.Date // which day (DAILY) or week's Monday (WEEKLY) the task was for
+  completedAt    DateTime @default(now()) // when it was ticked (UTC)
+  minutesSpent   Int?
+  workNote       String?
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, occurrenceDate])
 }

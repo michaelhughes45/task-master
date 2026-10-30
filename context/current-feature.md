@@ -1,18 +1,47 @@
-# Current Feature
+# Current Feature: Tasks Backend (08)
 
-<!-- Feature name and short description -->
+One-off (non-repeating) daily and weekly tasks and their completions: Prisma models, queries, server actions and a seeded demo user. No UI (spec 09); recurrence comes in spec 15.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Prisma models `Task` and `TaskCompletion` (no `rrule`, no `TaskException` yet), `TaskScope` (`DAILY` | `WEEKLY`) and `Priority` (`LOW` | `NORMAL` | `HIGH`, default `NORMAL`) enums
+  - `Task`: `id`, `userId`, `title`, `notes?`, `scope`, `priority`, `date` (`@db.Date`: the day, or the week's Monday), timestamps; index `[userId, date]`
+  - `TaskCompletion`: `id`, `taskId`, `occurrenceDate` (`@db.Date`), `completedAt` (default now), `minutesSpent?`, `workNote?`; unique `[taskId, occurrenceDate]`
+  - Cascade deletes from `User` and `Task`; migration `tasks`
+- `src/lib/db/tasks.ts` (server-only, every query filtered by `userId`), returning `TaskView` from `src/types/tasks.ts` (id, title, notes, scope, priority, day, done, doneLate, minutesSpent, workNote):
+  - `getDayTasks(userId, day)`: daily tasks for that day with their completion
+  - `getWeekTasks(userId, weekStart)`: weekly tasks for that week with completion
+  - `getWeekDayCounts(userId, weekStart)`: done/total per day for the week strip
+  - `getOpenEarlier(userId, today, tz)`: this week's past-day daily tasks not done (and ones done late today)
+- `src/actions/tasks.ts`: each action uses the session user, validates with Zod (`src/lib/validations/tasks.ts`), checks ownership with `where: { id, userId }`, returns `ActionResult`, revalidates affected paths
+  - `createTask({ title, scope, date, priority?, notes? })` (weekly `date` normalized to the Monday)
+  - `updateTask(id, { title?, priority?, notes?, date? })`
+  - `deleteTask(id)`
+  - `completeTask(taskId, occurrenceDate)` (upsert, `completedAt = now`)
+  - `uncompleteTask(taskId, occurrenceDate)` (delete completion)
+  - `saveCompletionDetails(taskId, occurrenceDate, { minutesSpent?, workNote? })` (0–1440 minutes, note ≤ 500 chars)
+- Done late is derived with `isDoneLate` from `src/lib/dates.ts`, never stored
+- Seed (`prisma/seed.ts`, `npx prisma db seed`, wired in `prisma.config.ts`):
+  - `src/lib/demo-user.ts`: `DEMO_USER_EMAIL = "demo@taskmaster.test"`, `DEMO_USER_PASSWORD`
+  - Demo user created with Better Auth's password hashing, timezone `America/New_York`, email verified
+  - Mockup tasks for the current week (computed from today): a few done, a few missed on past days, two with minutes and notes, five weekly tasks
+  - Re-runnable: deletes and recreates only the demo user's tasks
+- Tests (`src/actions/tasks.test.ts`): validation errors, ownership (another user's id → not found), weekly date normalization, minutes bounds
+- Seed run twice gives the same data, demo user can sign in, `npm run build` passes
 
 ## Notes
 
-<!-- Any extra notes -->
+- `occurrenceDate` for weekly tasks is the week's Monday.
+- Never trust a `userId` argument in actions; take it from the session.
+- Mock `@/lib/prisma` and `@/lib/session` in tests; never hit the database.
+- Convert `@db.Date` values only with `toDbDate` / `fromDbDate`; day boundaries in the user's timezone via `resolveTimezone`.
+- Schema change through `prisma migrate dev` on the Neon `development` branch only.
+- Implemented: `getDayTasks` / `getWeekTasks` also take `tz` (needed for `doneLate`). Completion actions only accept the task's own day or week (`NOT_AN_OCCURRENCE` otherwise) until recurrence. Re-ticking keeps the original `completedAt`. `saveCompletionDetails` ticks the task too. Moving a task's date moves its completion. The seed has no repeating mockup tasks (those come with spec 15) and refuses to run with `NODE_ENV=production`.
+- Better Auth CLI history: `server-only` imports may need temporary removal when running CLI tools; the seed script runs outside Next, so `src/lib/auth.ts` / `prisma.ts` `server-only` imports may need a workaround for the seed too.
 
 ## History
 
