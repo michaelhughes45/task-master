@@ -4,7 +4,7 @@ import { AuthSwitchLink } from "@/components/auth/AuthSwitchLink";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { OrDivider } from "@/components/auth/OrDivider";
 import { SignUpForm } from "@/components/auth/SignUpForm";
-import { isEmailVerificationEnabled } from "@/lib/email";
+import { env } from "@/lib/env";
 import { safeCallbackUrl } from "@/lib/safe-callback-url";
 
 export const metadata: Metadata = { title: "Create an account" };
@@ -21,7 +21,7 @@ export default async function SignUpPage({ searchParams }: PageProps<"/sign-up">
       <AuthCard title="Create an account" description="Plan your days and review your weeks.">
         <GoogleButton callbackURL={safeUrl} />
         <OrDivider />
-        <SignUpForm callbackURL={safeUrl} verificationRequired={isEmailVerificationEnabled()} />
+        <SignUpForm callbackURL={safeUrl} verificationRequired={env.EMAIL_VERIFICATION_ENABLED} />
       </AuthCard>
       <AuthSwitchLink
         prompt="Already have an account?"

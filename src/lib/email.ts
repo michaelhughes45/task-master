@@ -1,13 +1,9 @@
 import "server-only";
 import { Resend } from "resend";
+import { env } from "@/lib/env";
 
 // Resend's shared test sender until the app has its own domain.
 const FROM = "Task Master <onboarding@resend.dev>";
-
-// Verification is on unless the variable is exactly "false", so a typo never switches it off.
-export function isEmailVerificationEnabled(): boolean {
-  return process.env.EMAIL_VERIFICATION_ENABLED !== "false";
-}
 
 interface LinkEmail {
   to: string;
@@ -39,7 +35,7 @@ export function renderLinkEmail({ intro, linkLabel, url, expiry }: Omit<LinkEmai
 }
 
 async function sendLinkEmail({ to, subject, ...content }: LinkEmail) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(env.RESEND_API_KEY);
   const { error } = await resend.emails.send({ from: FROM, to, subject, ...renderLinkEmail(content) });
   if (error) throw new Error(`Resend failed to send "${subject}": ${error.message}`);
 }

@@ -77,7 +77,7 @@ These are the easiest places to introduce bugs in this app. Follow them strictly
 
 ## Environment Variables
 
-- Read env vars through `src/lib/env.ts`, which validates them once with Zod. Don't read `process.env` elsewhere.
+- Read env vars through `src/lib/env.ts`, which validates them once with Zod. Don't read `process.env` elsewhere. The one exception is standalone scripts that run outside Next.js (`prisma/seed.ts`, `scripts/*`, `prisma.config.ts`), because `env.ts` imports `server-only`.
 - Only `NEXT_PUBLIC_*` variables may reach the client. Never prefix a secret with `NEXT_PUBLIC_`.
 
 ## File Organization
