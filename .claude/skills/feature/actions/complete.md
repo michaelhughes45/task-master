@@ -1,5 +1,6 @@
 # Complete Action
 
+0. Stop every server started for this feature (`npm run dev`, `next start`, on any port). Stopping the background task isn't enough on Windows: it can leave the child `node ... next` process running and holding the port. Find what's listening (`netstat -ano | grep LISTENING` for 3000, 3001, ...), check its command line is this project's `next`, kill that PID, then confirm the ports are free
 1. Stage all changes and commit with a descriptive conventional commit message (no Claude attribution)
 2. Switch to main and merge the feature branch (no push yet)
 3. Delete the local feature branch

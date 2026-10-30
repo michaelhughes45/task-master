@@ -26,8 +26,8 @@ Add Google Calendar-style repeat options to the New/Edit dialog, turn the choice
 ## Files to Create / Modify
 
 1. `src/lib/rrule-builder.ts` (+ tests)
-2. `src/components/items/repeat-select.tsx`, `custom-repeat-panel.tsx`
-3. `src/components/items/task-form.tsx`, `event-form.tsx`
+2. `src/components/items/RepeatSelect.tsx`, `CustomRepeatPanel.tsx`
+3. `src/components/items/TaskForm.tsx`, `EventForm.tsx`
 4. `src/actions/tasks.ts`, `src/actions/events.ts`, validations
 
 ## Testing

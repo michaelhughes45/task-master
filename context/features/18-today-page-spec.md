@@ -22,8 +22,8 @@ Build `/today`, the morning overview: the day's schedule, today's tasks, this we
 ## Files to Create / Modify
 
 1. `src/app/(app)/today/page.tsx`
-2. `src/components/today/schedule-card.tsx`, `now-card.tsx`, `summary-line.tsx`, `open-earlier-card.tsx`
-3. `src/lib/db/progress.ts`, `src/components/layout/app-sidebar.tsx`
+2. `src/components/today/ScheduleCard.tsx`, `NowCard.tsx`, `SummaryLine.tsx`, `OpenEarlierCard.tsx`
+3. `src/lib/db/progress.ts`, `src/components/layout/AppSidebar.tsx`
 
 ## Testing
 

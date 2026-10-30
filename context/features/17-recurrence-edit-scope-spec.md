@@ -22,8 +22,8 @@ When editing or deleting one occurrence of a repeating task or event, ask whethe
 
 1. `src/lib/recurrence-edit.ts` (+ tests)
 2. `src/actions/tasks.ts`, `src/actions/events.ts`
-3. `src/components/items/edit-scope-dialog.tsx`
-4. `src/components/events/event-details-dialog.tsx`, `src/components/todos/task-row-menu.tsx`
+3. `src/components/items/EditScopeDialog.tsx`
+4. `src/components/events/EventDetailsDialog.tsx`, `src/components/todos/TaskRowMenu.tsx`
 
 ## Key Gotchas
 

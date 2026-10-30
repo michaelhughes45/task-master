@@ -24,7 +24,7 @@ Add Google as a second way to sign in and sign up, alongside email and password.
 ## Files to Create / Modify
 
 1. `src/lib/auth.ts`
-2. `src/components/auth/google-button.tsx`
+2. `src/components/auth/GoogleButton.tsx`
 3. `src/app/(auth)/sign-in/page.tsx`, `sign-up/page.tsx`
 
 ## Testing

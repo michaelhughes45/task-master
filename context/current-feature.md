@@ -1,18 +1,35 @@
-# Current Feature
+# Current Feature: To-dos Page
 
-<!-- Feature name and short description -->
+Build `/todos` from the mockup: a week strip to pick a day, that day's daily list and the week's weekly list, ticking tasks on and off, adding tasks inline, and marking missed tasks done late.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Route `/todos?date=YYYY-MM-DD` (default: today in the user's timezone; invalid → today). Header kicker "To-dos", title "Week of Oct 26 – Nov 1".
+- **Week strip**: 7 links (Mon–Sun) that set `?date=`; each shows day name, date number and `done/total` in mono. Selected: `border-primary bg-primary-soft`. Today (when not selected): blue bottom inset bar. Count colour: green-ink when all done, warning when a past day has missed tasks, muted otherwise.
+- Past day shows the muted explanation line from the mockup.
+- Two cards in an auto-fit grid (stacking on phones):
+  - **Daily**: full day name ("Wednesday, October 28") + "Today"/"Past day" sub-label + `done/total`
+  - **This week**: heading + week range + `done/total`
+- **`TaskRow`** (reused by the Today page later, no page-specific logic; handlers passed in):
+  - 44px checkbox button with a 20px box: done = green fill + checkmark; not done = muted border; missed = warning border
+  - Title (done = muted + line-through); tags: "Missed" / "Done late" (warning), "High priority" (primary-text), minutes (success-ink, mono)
+  - "Mark done" button on missed rows
+  - `aria-label` "Mark done: {title}" / "Mark not done: {title}"
+- **Ticking** with `useOptimistic` + server actions; failures roll back with a toast. Ticking a past day's task records a late completion.
+- **Inline add** row at the bottom of each card ("Add a task for Wednesday" / "Add a task for this week"): Enter creates, clears, keeps focus; empty input does nothing.
+- **Row menu** (dropdown): Rename (inline edit), Priority (Low/Normal/High), Delete (undo toast or confirm).
+- Empty states: "Nothing planned for this day." / "No weekly tasks yet."
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/app/(app)/todos/page.tsx`; `src/components/todos/` `WeekStrip.tsx`, `TaskListCard.tsx`, `TaskRow.tsx`, `AddTaskInput.tsx`, `TaskRowMenu.tsx`; small additions to `src/actions/tasks.ts` if needed.
+- Compute "today" and past days with `src/lib/dates.ts` in the user's timezone, not the browser's or server's.
+- Reference: `context/mockup/app-desktop.html` (To-dos screen and task row template).
+- Testing: seeded demo user counts per day match the seed and past days show missed tasks; tick/untick updates count immediately and persists on reload; ticking a missed task shows "Done late"; add/rename/priority/delete work; 375px strip fits without horizontal scroll and cards stack; light and dark match the mockup; `npm run build` passes.
 
 ## History
 

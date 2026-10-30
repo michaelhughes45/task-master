@@ -28,7 +28,7 @@ Send a web push notification at 7 PM on Sunday in each user's timezone saying th
 1. `prisma/schema.prisma` + migration
 2. `src/actions/push.ts`, `src/lib/push.ts`, `src/lib/notify-schedule.ts` (+ tests)
 3. `src/app/api/cron/review/route.ts` (+ test for auth and selection)
-4. `public/sw.js`, `src/components/settings/review-reminder.tsx`, `vercel.json`
+4. `public/sw.js`, `src/components/settings/ReviewReminder.tsx`, `vercel.json`
 
 ## Key Gotchas
 

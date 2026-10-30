@@ -25,7 +25,7 @@ Build `/todos` from the mockup: a week strip to pick a day, that day's daily lis
 ## Files to Create / Modify
 
 1. `src/app/(app)/todos/page.tsx`
-2. `src/components/todos/week-strip.tsx`, `task-list-card.tsx`, `task-row.tsx`, `add-task-input.tsx`, `task-row-menu.tsx`
+2. `src/components/todos/WeekStrip.tsx`, `TaskListCard.tsx`, `TaskRow.tsx`, `AddTaskInput.tsx`, `TaskRowMenu.tsx`
 3. Small additions to `src/actions/tasks.ts` if needed
 
 ## Key Gotchas
