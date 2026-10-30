@@ -23,3 +23,18 @@ export function newItemDefaults(search: string, tz: string, now: Date = new Date
     endTime: start === 23 ? "23:59" : hourTime(start + 1),
   };
 }
+
+function minutesToTime(minutes: number): WallTime {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+// A click on the calendar grid: the slot rounded down to 30 minutes, for an hour, ending by
+// 23:59 at the latest.
+export function slotDefaults(date: DateStr, minutes: number): NewItemDefaults {
+  const start = Math.min(Math.max(Math.floor(minutes / 30) * 30, 0), 23 * 60 + 30);
+  return {
+    date,
+    startTime: minutesToTime(start),
+    endTime: minutesToTime(Math.min(start + 60, 23 * 60 + 59)),
+  };
+}

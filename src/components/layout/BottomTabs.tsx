@@ -17,12 +17,12 @@ export function BottomTabs() {
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="grid h-[68px] grid-cols-4">
-        {TABS.map(({ href, tabLabel, icon: Icon }) => {
+        {TABS.map(({ href, tabHref, tabLabel, icon: Icon }) => {
           const active = isActivePath(pathname, href);
           return (
             <li key={href} className="flex">
               <Link
-                href={href}
+                href={tabHref ?? href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex flex-1 flex-col items-center justify-center gap-[3px] text-[11.5px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset",

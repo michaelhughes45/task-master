@@ -127,6 +127,13 @@ export function instantToWallTime(instant: Date, tz: string): WallTime {
   return format(instant, "HH:mm", { in: inZone(tz) });
 }
 
+// Minutes since midnight on the zone's wall clock. Not elapsed time: on DST change days it
+// skips or repeats an hour, which is what the calendar grid wants (9 AM is always at 9 AM).
+export function instantToWallMinutes(instant: Date, tz: string) {
+  const [hours, minutes] = instantToWallTime(instant, tz).split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
 interface DoneLateInput {
   occurrenceDay: DateStr;
   scope: TaskScope;

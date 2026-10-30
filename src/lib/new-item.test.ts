@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newItemDefaults } from "@/lib/new-item";
+import { newItemDefaults, slotDefaults } from "@/lib/new-item";
 
 const NY = "America/New_York";
 
@@ -54,5 +54,30 @@ describe("newItemDefaults", () => {
       startTime: "02:00",
       endTime: "03:00",
     });
+  });
+});
+
+describe("slotDefaults", () => {
+  it("rounds down to the half hour and lasts an hour", () => {
+    expect(slotDefaults("2026-10-28", 9 * 60 + 47)).toEqual({
+      date: "2026-10-28",
+      startTime: "09:30",
+      endTime: "10:30",
+    });
+    expect(slotDefaults("2026-10-28", 14 * 60 + 29)).toMatchObject({ startTime: "14:00", endTime: "15:00" });
+  });
+
+  it("starts at midnight for the top of the column", () => {
+    expect(slotDefaults("2026-10-28", 0)).toMatchObject({ startTime: "00:00", endTime: "01:00" });
+  });
+
+  it("ends by 23:59 late in the day", () => {
+    expect(slotDefaults("2026-10-28", 23 * 60 + 40)).toMatchObject({ startTime: "23:30", endTime: "23:59" });
+    expect(slotDefaults("2026-10-28", 23 * 60)).toMatchObject({ startTime: "23:00", endTime: "23:59" });
+  });
+
+  it("clamps clicks just outside the column", () => {
+    expect(slotDefaults("2026-10-28", -3)).toMatchObject({ startTime: "00:00" });
+    expect(slotDefaults("2026-10-28", 24 * 60 + 5)).toMatchObject({ startTime: "23:30", endTime: "23:59" });
   });
 });

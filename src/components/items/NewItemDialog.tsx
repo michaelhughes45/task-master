@@ -10,9 +10,12 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui
 import type { NewItemDefaults } from "@/lib/new-item";
 import type { EventDetails } from "@/types/events";
 
-export type NewItemTarget = { mode: "new"; defaults: NewItemDefaults } | { mode: "edit"; event: EventDetails };
-
 type Kind = "task" | "event";
+
+// A new item opens as a task unless `kind` says otherwise.
+export type NewItemTarget =
+  | { mode: "new"; kind?: Kind; defaults: NewItemDefaults }
+  | { mode: "edit"; event: EventDetails };
 
 const KINDS = [
   { value: "task", label: "Task" },
@@ -54,7 +57,7 @@ interface NewItemBodyProps {
 
 function NewItemBody({ target, titleRef, onClose }: NewItemBodyProps) {
   const editing = target.mode === "edit" ? target.event : null;
-  const [kind, setKind] = useState<Kind>(editing ? "event" : "task");
+  const [kind, setKind] = useState<Kind>(target.mode === "edit" ? "event" : (target.kind ?? "task"));
   const [title, setTitle] = useState(editing?.form.title ?? "");
   const heading = editing ? "Edit event" : kind === "task" ? "New task" : "New event";
   const formProps = {

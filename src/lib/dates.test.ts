@@ -10,6 +10,7 @@ import {
   formatTime,
   formatWeekRange,
   fromDbDate,
+  instantToWallMinutes,
   instantToWallTime,
   isBefore,
   isDateStr,
@@ -440,5 +441,23 @@ describe("isDateStr / isWallTime", () => {
     expect(isWallTime("24:00")).toBe(false);
     expect(isWallTime("9:00")).toBe(false);
     expect(isWallTime("09:60")).toBe(false);
+  });
+});
+
+describe("instantToWallMinutes", () => {
+  it("counts wall-clock minutes from midnight in the zone", () => {
+    // 13:30 UTC is 9:30 AM EDT.
+    expect(instantToWallMinutes(new Date("2026-10-28T13:30:00Z"), NY)).toBe(570);
+  });
+
+  it("reads the wall clock, not elapsed time, on the day DST ends", () => {
+    // Nov 1, 2026: 9 AM EST is 10 hours after New York's midnight, but it is still 9 AM.
+    expect(instantToWallMinutes(new Date("2026-11-01T14:00:00Z"), NY)).toBe(540);
+  });
+
+  it("repeats the hour that falls back", () => {
+    // 1:30 AM EDT and 1:30 AM EST.
+    expect(instantToWallMinutes(new Date("2026-11-01T05:30:00Z"), NY)).toBe(90);
+    expect(instantToWallMinutes(new Date("2026-11-01T06:30:00Z"), NY)).toBe(90);
   });
 });

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { EventDetailsDialog } from "@/components/events/EventDetailsDialog";
 import { NewItemDialog, type NewItemTarget } from "@/components/items/NewItemDialog";
 import { ItemDialogsContext, type ItemDialogs } from "@/hooks/use-item-dialogs";
-import { newItemDefaults } from "@/lib/new-item";
+import { newItemDefaults, slotDefaults } from "@/lib/new-item";
 import type { EventDetails } from "@/types/events";
 
 interface DialogState<T> {
@@ -44,6 +44,8 @@ export function ItemDialogsProvider({ timezone, children }: { timezone: string; 
             defaults: newItemDefaults(window.location.search, timezone),
           }),
         ),
+      openNewEvent: (date, minutes) =>
+        setNewItem(opened<NewItemTarget>({ mode: "new", kind: "event", defaults: slotDefaults(date, minutes) })),
       openEvent: (event) => setDetails(opened(event)),
     }),
     [timezone],

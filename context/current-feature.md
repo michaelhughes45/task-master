@@ -1,18 +1,34 @@
-# Current Feature
+# Current Feature: Calendar — Week and Day Views (13)
 
-<!-- Feature name and short description -->
+Build `/calendar` with the week view (default on desktop) and day view (default on phones): a time grid with events positioned by time, an all-day row, the current-time line, and navigation.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+Complete
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Route `/calendar?view=week|day|month&date=YYYY-MM-DD`; `month` falls back to week until spec 14. Bad params fall back to defaults, never throw.
+- **Toolbar** (`CalendarToolbar`): Today button, prev/next arrows (a week or a day), range label ("Oct 26 – Nov 1, 2026" / "Wednesday, October 28"), Day / Week / Month segmented control. All are links, so the back button works.
+- **Header row**: day name + date number per column; today's number in a blue circle.
+- **All-day row** (`AllDayRow`) above the grid, only when any column has all-day events.
+- **Time grid** (`TimeGrid`, `DayColumn`): full 24 hours at 48px/hour, scrolled so 7 AM is at the top on load (or 1 hour before the first event if earlier). Mono hour labels in a 56px gutter, hairline hour lines.
+- **Events** (`EventBlock`): absolutely positioned by start/end in the user's timezone; `bg-primary-soft text-primary-ink` (blue) or `bg-success-soft text-success-ink` (green); semibold ellipsis title, mono time hidden under 45 minutes. Events crossing midnight are clipped per day.
+- **Overlaps**: side by side, via pure `src/lib/calendar-layout.ts` `layoutDay(events) → { id, top, height, left%, width% }[]` with tests.
+- **Now line** (`NowLine`) on today's column: 2px primary line with a dot, updated every minute.
+- Clicking an event opens `EventDetailsDialog` (spec 12, `openEvent`); clicking an empty slot opens the New dialog as an event at that time, rounded down to 30 minutes.
+- Phones default to day view (arrows, no swipe); week view scrolls horizontally inside its card (min-width 760px).
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/app/(app)/calendar/page.tsx`; `src/components/calendar/CalendarToolbar.tsx`, `TimeGrid.tsx`, `DayColumn.tsx`, `EventBlock.tsx`, `NowLine.tsx`, `AllDayRow.tsx`; `src/lib/calendar-layout.ts` (+ tests).
+- Position from wall-clock minutes in the user's timezone, not UTC instants (DST days have 23/25 hours). On Nov 1, 2026 (NY DST ends) a 9 AM event must sit at 9 AM.
+- Server-render the grid; only the now line and click handlers are client code.
+- Event data comes from `getEventsInRange(userId, firstDay, lastDay, tz)`; details dialog data from `toEventDetails(event, tz)`. All-day events are UTC dates (`fromDbDate`).
+- **Phone default (decided):** when the URL has no `view`, a small client component checks the viewport and, below `md`, `router.replace`s to `?view=day` (keeping `date`), so the URL always matches the screen. To avoid the week→day flash in normal use, the phone `BottomTabs` Calendar link goes straight to `/calendar?view=day`, while the desktop sidebar links to `/calendar`; only a bare `/calendar` typed or bookmarked on a phone hits the client switch.
+- Tests: layout (no overlap, two overlapping, three in a chain, back-to-back not overlapping); seeded week matches the mockup; week/day, prev/next, Today update the URL; DST Nov 1; 375px day view usable; `npm run build` passes.
+- Reference: `context/mockup/app-desktop.html` (Calendar screen).
+- **Implementation decisions:** Scroll rule: an hour before the first event only when it starts before 7 AM. Events are drawn at least 30 minutes tall, and overlap is judged on the drawn size. Month shows as a disabled "Coming soon" segment instead of a link to a view that falls back to week. Phones hide the toolbar's range label because the page title already shows it. Event positions use inline `style` (computed values). Empty-slot clicks are mouse-only; keyboard users have the New button. `openNewEvent(date, minutes)` was added to the dialog context, with `slotDefaults` and `instantToWallMinutes` helpers.
 
 ## History
 
