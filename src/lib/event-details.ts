@@ -8,6 +8,7 @@ import {
   instantToWallTime,
   todayIn,
 } from "@/lib/dates";
+import { describeRRule } from "@/lib/rrule-builder";
 import type { EventDetails, EventView } from "@/types/events";
 
 // Times the Edit form offers if an all-day event is switched to a timed one.
@@ -37,9 +38,16 @@ function timedLabels(event: EventView, tz: string) {
   };
 }
 
-// Call on the server: labels and form times are in the user's zone, never the browser's.
+function labels(event: EventView, tz: string) {
+  return event.allDay ? allDayLabels(event) : timedLabels(event, tz);
+}
+
+// Call on the server: labels and form times are in the user's zone, never the browser's. The
+// labels describe the occurrence; a repeating event's form starts from its series.
 export function toEventDetails(event: EventView, tz: string): EventDetails {
-  const { date, dayLabel, timeLabel, startTime, endTime } = event.allDay ? allDayLabels(event) : timedLabels(event, tz);
+  const { date, dayLabel, timeLabel } = labels(event, tz);
+  const { series } = event;
+  const form = series ? labels({ ...event, startAt: series.startAt, endAt: series.endAt }, tz) : labels(event, tz);
   return {
     id: event.id,
     title: event.title,
@@ -48,15 +56,17 @@ export function toEventDetails(event: EventView, tz: string): EventDetails {
     color: event.color,
     dayLabel,
     timeLabel,
+    repeatLabel: series && describeRRule(series.rrule, date),
     form: {
       title: event.title,
-      date,
+      date: form.date,
       allDay: event.allDay,
-      startTime,
-      endTime,
+      startTime: form.startTime,
+      endTime: form.endTime,
       location: event.location ?? "",
       notes: event.notes ?? "",
       color: event.color,
+      rrule: series?.rrule ?? null,
     },
   };
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isDateStr } from "@/lib/dates";
+import { checkRepeat, rruleField } from "@/lib/validations/repeat";
 
 export const MAX_MINUTES = 1440;
 
@@ -16,19 +17,24 @@ const day = z.string().refine(isDateStr, "Choose a valid date");
 export const taskIdSchema = z.string().min(1).max(64);
 export const occurrenceDateSchema = day;
 
-export const createTaskSchema = z.object({
-  title,
-  scope: z.enum(["DAILY", "WEEKLY"]),
-  date: day,
-  priority: priority.optional(),
-  notes: notes.optional(),
-});
+export const createTaskSchema = z
+  .object({
+    title,
+    scope: z.enum(["DAILY", "WEEKLY"]),
+    date: day,
+    priority: priority.optional(),
+    notes: notes.optional(),
+    rrule: rruleField,
+  })
+  .superRefine((task, ctx) => checkRepeat(ctx, task.rrule, task.scope, task.date));
 
+// The rule is checked in the action, against the task's scope and (new or stored) date.
 export const updateTaskSchema = z.object({
   title: title.optional(),
   priority: priority.optional(),
   notes: notes.optional(),
   date: day.optional(),
+  rrule: rruleField,
 });
 
 export const completionDetailsSchema = z.object({

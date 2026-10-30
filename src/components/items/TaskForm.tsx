@@ -4,9 +4,12 @@ import { useId, useState } from "react";
 import { createTask } from "@/actions/tasks";
 import { ITEM_INPUT_CLASS, ItemField, fieldA11y } from "@/components/items/ItemField";
 import { ItemFormFooter } from "@/components/items/ItemFormFooter";
+import { RepeatSelect } from "@/components/items/RepeatSelect";
 import { SegmentedControl } from "@/components/items/SegmentedControl";
 import { TitleField } from "@/components/items/TitleField";
 import { useItemForm } from "@/hooks/use-item-form";
+import { isDateStr } from "@/lib/dates";
+import { repeatRule, repeatStateFor } from "@/lib/rrule-builder";
 import { createTaskSchema } from "@/lib/validations/tasks";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { Priority } from "@/types/tasks";
@@ -38,6 +41,9 @@ export function TaskForm({ title, onTitleChange, titleRef, defaultDate, onCancel
   const [scope, setScope] = useState<TaskScope>("DAILY");
   const [date, setDate] = useState(defaultDate);
   const [priority, setPriority] = useState<Priority>("NORMAL");
+  const [repeat, setRepeat] = useState(() => repeatStateFor(null, defaultDate, "DAILY"));
+  // Presets are named after the date; while the date field is half-typed, keep the last one.
+  const repeatDay = isDateStr(date) ? date : defaultDate;
   const { errors, isPending, submit, clearError } = useItemForm({
     schema: createTaskSchema,
     action: createTask,
@@ -47,7 +53,7 @@ export function TaskForm({ title, onTitleChange, titleRef, defaultDate, onCancel
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    submit({ title, scope, date, priority });
+    submit({ title, scope, date, priority, rrule: repeatRule(repeat, repeatDay, scope) });
   }
 
   return (
@@ -65,7 +71,17 @@ export function TaskForm({ title, onTitleChange, titleRef, defaultDate, onCancel
         />
         <div className="flex flex-col gap-1.5">
           <span className="text-[13px] font-medium text-muted-foreground">List</span>
-          <SegmentedControl label="List" options={SCOPES} value={scope} onChange={setScope} />
+          <SegmentedControl
+            label="List"
+            options={SCOPES}
+            value={scope}
+            onChange={(next) => {
+              // The two lists offer different repeats.
+              setScope(next);
+              setRepeat(repeatStateFor(null, repeatDay, next));
+              clearError("rrule");
+            }}
+          />
         </div>
         <div className="grid grid-cols-2 items-start gap-4 md:grid-cols-[170px_140px]">
           <ItemField id={`${id}-date`} label={scope === "WEEKLY" ? "Week of" : "Date"} errors={errors.date}>
@@ -76,6 +92,7 @@ export function TaskForm({ title, onTitleChange, titleRef, defaultDate, onCancel
               onChange={(e) => {
                 setDate(e.target.value);
                 clearError("date");
+                clearError("rrule");
               }}
               className={ITEM_INPUT_CLASS}
               {...fieldA11y(`${id}-date`, errors.date)}
@@ -96,6 +113,16 @@ export function TaskForm({ title, onTitleChange, titleRef, defaultDate, onCancel
             </select>
           </ItemField>
         </div>
+        <RepeatSelect
+          day={repeatDay}
+          scope={scope}
+          value={repeat}
+          onChange={(next) => {
+            setRepeat(next);
+            clearError("rrule");
+          }}
+          errors={errors.rrule}
+        />
       </div>
       <ItemFormFooter submitLabel="Add task" pending={isPending} onCancel={onCancel} />
     </form>

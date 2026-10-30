@@ -105,6 +105,89 @@ describe("createTask", () => {
   });
 });
 
+describe("createTask repeat rules", () => {
+  it("stores a daily task's rule in its normal form", async () => {
+    await createTask({ title: "Review inbox", scope: "DAILY", date: "2026-10-28", rrule: "FREQ=WEEKLY;BYDAY=FR,MO" });
+
+    expect(task.create.mock.calls[0][0].data).toMatchObject({ rrule: "FREQ=WEEKLY;BYDAY=MO,FR" });
+  });
+
+  it("stores no rule for a one-off task", async () => {
+    await createTask({ title: "Pay bill", scope: "DAILY", date: "2026-10-28" });
+
+    expect(task.create.mock.calls[0][0].data).toMatchObject({ rrule: null });
+  });
+
+  it("repeats a weekly task from its Monday", async () => {
+    await createTask({ title: "Long run", scope: "WEEKLY", date: "2026-10-29", rrule: "FREQ=WEEKLY;INTERVAL=2;COUNT=4" });
+
+    expect(task.create.mock.calls[0][0].data).toMatchObject({
+      date: day("2026-10-26"),
+      rrule: "FREQ=WEEKLY;INTERVAL=2;COUNT=4",
+    });
+  });
+
+  it("lets a weekly task end in the week it starts", async () => {
+    // Picked Thursday; the series starts Monday, so an end date that Tuesday is fine.
+    const result = await createTask({ title: "Long run", scope: "WEEKLY", date: "2026-10-29", rrule: "FREQ=WEEKLY;UNTIL=20261027" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    ["DAILY", "FREQ=SECONDLY", "Choose a repeat option from the list"],
+    ["DAILY", "FREQ=DAILY;INTERVAL=100", "Repeat every 1 to 99"],
+    ["DAILY", "FREQ=DAILY;UNTIL=20261027", "The end date can't be before the start date"],
+    ["WEEKLY", "FREQ=DAILY", "Weekly tasks repeat by week"],
+    ["WEEKLY", "FREQ=WEEKLY;BYDAY=TU,TH", "Weekly tasks repeat by week"],
+  ])("rejects a %s task repeating %s", async (scope, rrule, message) => {
+    const result = await createTask({ title: "Read", scope, date: "2026-10-28", rrule });
+
+    expect(result).toMatchObject({ success: false, fieldErrors: { rrule: [message] } });
+    expect(task.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateTask repeat rules", () => {
+  it("changes the whole series' rule", async () => {
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+
+    const result = await updateTask("task-3", { rrule: "freq=daily" });
+
+    expect(result.success).toBe(true);
+    expect(task.update).toHaveBeenCalledWith(expect.objectContaining({ data: { rrule: "FREQ=DAILY" } }));
+  });
+
+  it("stops repeating when the rule is cleared", async () => {
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+
+    await updateTask("task-3", { rrule: null });
+
+    expect(task.update).toHaveBeenCalledWith(expect.objectContaining({ data: { rrule: null } }));
+  });
+
+  it("leaves the rule alone when it isn't sent", async () => {
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+
+    await updateTask("task-3", { title: "Inbox zero" });
+
+    expect(task.update.mock.calls[0][0].data).not.toHaveProperty("rrule", expect.anything());
+  });
+
+  it("checks the rule against the stored scope and the series' start", async () => {
+    task.findFirst.mockResolvedValue(WEEKLY_TASK as never);
+    const weekly = await updateTask("task-2", { rrule: "FREQ=DAILY" });
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+    const tooEarly = await updateTask("task-3", { rrule: "FREQ=DAILY;UNTIL=20261025" });
+    const movedPast = await updateTask("task-3", { date: "2026-11-02", rrule: "FREQ=DAILY;UNTIL=20261030" });
+
+    expect(weekly).toMatchObject({ success: false, fieldErrors: { rrule: ["Weekly tasks repeat by week"] } });
+    expect(tooEarly).toMatchObject({ success: false, fieldErrors: { rrule: ["The end date can't be before the start date"] } });
+    expect(movedPast.success).toBe(false);
+    expect(task.update).not.toHaveBeenCalled();
+  });
+});
+
 describe("updateTask", () => {
   it("looks the task up by id and session user", async () => {
     const result = await updateTask("task-1", { title: "New title" });

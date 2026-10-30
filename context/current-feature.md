@@ -1,18 +1,42 @@
-# Current Feature
+# Current Feature: Recurrence UI — Repeat Options in the Dialog (16)
 
-<!-- Feature name and short description -->
+Google Calendar-style repeat options in the New/Edit dialog, turned into an RRULE, with "Repeats …" labels on tasks and events.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- **Repeat select** in `TaskForm` and `EventForm`, presets based on the chosen date (e.g. Wednesday, Oct 28):
+  - Daily tasks and events: Does not repeat · Daily · Weekly on Wednesday · Every weekday (Monday to Friday) · Monthly on the fourth Wednesday ("on the last Wednesday" when it's the last one) · Annually on October 28 · Custom…
+  - Weekly-list tasks: Does not repeat · Every week · Every 2 weeks · Custom…
+- **Custom panel** (mockup: New dialog → Repeat → Custom…):
+  - Repeat every [N] [day | week | month | year]
+  - Weeks: weekday chips M T W T F S S (`aria-pressed`, full day names as labels), default the chosen date's weekday, at least one required
+  - Months: "On day 28" or "On the fourth Wednesday"
+  - Ends: Never · On [date] · After [N] times (radio group)
+  - Live plain-English summary ("Every 2 weeks on Mon, Wed, until Dec 31, 2026")
+- `src/lib/rrule-builder.ts` (pure, tested):
+  - `buildRRule(options) → string` and `parseRRule(string) → options` (round-trip)
+  - `describeRRule(string, startDay) → string` ("Repeats daily", "Every weekday", "Weekly on Mon, Wed, Fri", "Monthly on the 4th Wednesday")
+  - `presetsFor(day, scope)` → the preset lists above
+- Create/update task and event actions accept the RRULE string and validate it with `rrule` (Zod validations updated).
+- `describeRRule` label shown in task rows, the event details dialog and the Today schedule meta line.
+- Editing a repeating item changes the whole series (scope choice is spec 17).
+- Tests: every preset, custom weekly with several days, monthly by day and by nth weekday, last weekday, until and count; `parse(build(x)) == x`. Create one of each preset and check occurrences in the calendar. Labels read naturally. `npm test` and `npm run build` pass.
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/lib/rrule-builder.ts` (+ tests), `src/components/items/RepeatSelect.tsx`, `CustomRepeatPanel.tsx`, `TaskForm.tsx`, `EventForm.tsx`, `src/actions/tasks.ts`, `src/actions/events.ts`, `src/lib/validations/*`.
+- Carried over from spec 15: validate rules where they are written. A never-matching rule (e.g. yearly Feb 30) makes rrule search to year 9999 (~5 s) even in a bounded window, so validation must reject rules with no occurrence, not just unparseable ones. Keep the engine's limits in mind: `buildRule` in `src/lib/recurrence.ts` only accepts DAILY/WEEKLY/MONTHLY/YEARLY, and a date-only `UNTIL` includes that day.
+- Weekly-scope tasks expand by Monday (`COUNT` counts weeks), so the weekly-list presets build WEEKLY rules on the week start.
+- Events use floating wall time (the rule is expanded in the user's zone), so "Weekly on Wednesday" is the wall-clock weekday in the user's timezone; presets come from the form's `YYYY-MM-DD` date, never a `Date` in the browser zone.
+- "Fourth" vs "last": Oct 28, 2026 is both the 4th and the last Wednesday; the spec says use "last" when it's the last one (`BYDAY=-1WE`).
+- The Today page is still a placeholder (spec 18), so the Today schedule label lands then; for now the label goes in task rows and the event details dialog.
+- Event details and form values are built on the server (`toEventDetails`), so the repeat label and current rule should come through there too.
+- Mockup: `context/mockup/app-desktop.html` (Repeat → Custom…).
+- Implementation decisions: only rules `buildRRule` can write are accepted (`parseRRule` strict, actions store `normalizeRRule`), so stored rules always expand fast; `repeatProblem` also rejects out-of-range numbers, an end date before the start, and an end date with no occurrence before it. Weekly-list custom is "every N weeks" only. Weekday chips keep at least one day (the last can't be turned off). Editing a repeating event's form starts from the series' first date/times (`EventView.series`); existing exceptions aren't re-keyed when the series' time changes (spec 17). Monthly "last" wins over "fourth" when both apply (per spec, unlike the mockup's label).
 
 ## History
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, XIcon } from "lucide-react";
+import { MapPin, Repeat, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteEvent } from "@/actions/events";
@@ -76,6 +76,12 @@ function EventDetailsBody({ event, onEdit, onClose }: EventDetailsBodyProps) {
       <DialogDescription render={<div />} className="flex flex-col gap-1.5 pr-5 pb-[18px] pl-[42px] text-sm">
         <span className="text-foreground">{event.dayLabel}</span>
         <span className="font-mono text-[13.5px]">{event.timeLabel}</span>
+        {event.repeatLabel && (
+          <span className="flex items-center gap-1.5">
+            <Repeat className="size-3.5 flex-none" aria-hidden="true" />
+            {event.repeatLabel}
+          </span>
+        )}
         {event.location && (
           <span className="flex items-center gap-1.5">
             <MapPin className="size-3.5 flex-none" aria-hidden="true" />

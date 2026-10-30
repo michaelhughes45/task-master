@@ -107,6 +107,7 @@ function eventFormInitial(target: NewItemTarget) {
       location: "",
       notes: "",
       color: "BLUE" as const,
+      rrule: null,
     },
   };
 }

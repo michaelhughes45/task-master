@@ -5,6 +5,7 @@ import { z } from "zod";
 import { fromDbDate, toDbDate, weekStartOf } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { isTaskOccurrence } from "@/lib/recurrence";
+import { normalizeRRule, repeatProblem } from "@/lib/rrule-builder";
 import { getCurrentUserId } from "@/lib/session";
 import {
   completionDetailsSchema,
@@ -88,11 +89,19 @@ export async function createTask(input: unknown): Promise<ActionResult<{ id: str
 
   const parsed = createTaskSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
-  const { title, scope, date, priority, notes } = parsed.data;
+  const { title, scope, date, priority, notes, rrule } = parsed.data;
 
   try {
     const task = await prisma.task.create({
-      data: { userId, title, scope, priority, notes, date: toDbDate(normalizeDate(scope, date)) },
+      data: {
+        userId,
+        title,
+        scope,
+        priority,
+        notes,
+        date: toDbDate(normalizeDate(scope, date)),
+        rrule: rrule ? normalizeRRule(rrule) : null,
+      },
       select: { id: true },
     });
     revalidateTasks();
@@ -111,15 +120,23 @@ export async function updateTask(id: unknown, input: unknown): Promise<ActionRes
   if (!taskId.success) return { success: false, error: NOT_FOUND };
   const parsed = updateTaskSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
-  const { date, ...fields } = parsed.data;
+  const { date, rrule, ...fields } = parsed.data;
 
   try {
     const task = await findOwnedTask(taskId.data, userId);
     if (!task) return { success: false, error: NOT_FOUND };
 
+    // Editing changes the whole series: the rule is checked against the series' start.
     const newDate = date === undefined ? undefined : toDbDate(normalizeDate(task.scope, date));
+    const newRule = rrule === undefined ? undefined : rrule ? normalizeRRule(rrule) : null;
+    const problem = rrule && repeatProblem(rrule, task.scope, fromDbDate(newDate ?? task.date));
+    if (problem) return { success: false, error: problem, fieldErrors: { rrule: [problem] } };
+
     await prisma.$transaction([
-      prisma.task.update({ where: { id: task.id, userId }, data: { ...fields, date: newDate } }),
+      prisma.task.update({
+        where: { id: task.id, userId },
+        data: { ...fields, date: newDate, rrule: newRule },
+      }),
       // A one-off task's completion is for its own date, so it moves with the task. A series'
       // completions stay on the dates they were for.
       ...(newDate && task.rrule === null

@@ -4,9 +4,12 @@ import { useId, useState } from "react";
 import { createEvent, updateEvent } from "@/actions/events";
 import { ITEM_INPUT_CLASS, ItemField, fieldA11y } from "@/components/items/ItemField";
 import { ItemFormFooter } from "@/components/items/ItemFormFooter";
+import { RepeatSelect } from "@/components/items/RepeatSelect";
 import { TitleField } from "@/components/items/TitleField";
 import { Switch } from "@/components/ui/switch";
 import { useItemForm } from "@/hooks/use-item-form";
+import { isDateStr } from "@/lib/dates";
+import { repeatRule, repeatStateFor } from "@/lib/rrule-builder";
 import { cn } from "@/lib/utils";
 import { eventSchema, type EventInput } from "@/lib/validations/events";
 import type { EventColor, EventFormValues } from "@/types/events";
@@ -21,14 +24,14 @@ const COLORS = [
   },
 ] as const;
 
-type Fields = Omit<EventFormValues, "title">;
+type Fields = Omit<EventFormValues, "title" | "rrule">;
 
 interface EventFormProps {
   // The title lives in the dialog so it survives switching between Task and Event.
   title: string;
   onTitleChange: (title: string) => void;
   titleRef: React.Ref<HTMLInputElement>;
-  initial: Fields;
+  initial: Omit<EventFormValues, "title">;
   // Set when editing an existing event.
   eventId?: string;
   onCancel: () => void;
@@ -38,6 +41,9 @@ interface EventFormProps {
 export function EventForm({ title, onTitleChange, titleRef, initial, eventId, onCancel, onDone }: EventFormProps) {
   const id = useId();
   const [fields, setFields] = useState<Fields>(initial);
+  const [repeat, setRepeat] = useState(() => repeatStateFor(initial.rrule, initial.date, "DAILY"));
+  // Presets are named after the date; while the date field is half-typed, keep the last one.
+  const repeatDay = isDateStr(fields.date) ? fields.date : initial.date;
   const { errors, isPending, submit, clearError } = useItemForm({
     schema: eventSchema,
     action: (values: EventInput) => (eventId ? updateEvent(eventId, values) : createEvent(values)),
@@ -57,6 +63,7 @@ export function EventForm({ title, onTitleChange, titleRef, initial, eventId, on
       ...rest,
       ...(fields.allDay ? {} : { startTime, endTime }),
       title,
+      rrule: repeatRule(repeat, repeatDay, "DAILY"),
     });
   }
 
@@ -79,7 +86,10 @@ export function EventForm({ title, onTitleChange, titleRef, initial, eventId, on
               type="date"
               required
               value={fields.date}
-              onChange={(e) => set("date", e.target.value)}
+              onChange={(e) => {
+                set("date", e.target.value);
+                clearError("rrule");
+              }}
               className={ITEM_INPUT_CLASS}
               {...fieldA11y(`${id}-date`, errors.date)}
             />
@@ -135,6 +145,16 @@ export function EventForm({ title, onTitleChange, titleRef, initial, eventId, on
           />
         </ItemField>
         <ColorPicker value={fields.color} onChange={(color) => set("color", color)} />
+        <RepeatSelect
+          day={repeatDay}
+          scope="DAILY"
+          value={repeat}
+          onChange={(next) => {
+            setRepeat(next);
+            clearError("rrule");
+          }}
+          errors={errors.rrule}
+        />
       </div>
       <ItemFormFooter submitLabel="Save event" pending={isPending} onCancel={onCancel} />
     </form>

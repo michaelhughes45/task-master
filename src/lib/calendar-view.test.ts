@@ -16,6 +16,7 @@ function timed(id: string, startAt: string, endAt: string): EventView {
     allDay: false,
     startAt: new Date(startAt),
     endAt: new Date(endAt),
+    series: null,
   };
 }
 

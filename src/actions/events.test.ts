@@ -52,6 +52,7 @@ describe("createEvent", () => {
         allDay: false,
         startAt: new Date("2026-07-15T20:00:00Z"),
         endAt: new Date("2026-07-15T20:45:00Z"),
+        rrule: null,
       },
       select: { id: true },
     });
@@ -151,6 +152,50 @@ describe("createEvent", () => {
     event.create.mockRejectedValue(new Error("connection reset"));
 
     expect(await createEvent(TIMED)).toEqual({ success: false, error: "Couldn't add the event. Try again." });
+  });
+});
+
+describe("createEvent repeat rules", () => {
+  it("stores the rule in its normal form", async () => {
+    await createEvent({ ...TIMED, rrule: "byday=fr,mo;freq=weekly" });
+
+    expect(event.create.mock.calls[0][0].data).toMatchObject({ rrule: "FREQ=WEEKLY;BYDAY=MO,FR" });
+  });
+
+  it("stores no rule for an empty one", async () => {
+    await createEvent({ ...TIMED, rrule: "" });
+
+    expect(event.create.mock.calls[0][0].data).toMatchObject({ rrule: null });
+  });
+
+  it.each([
+    ["FREQ=HOURLY", "Choose a repeat option from the list"],
+    // The rule from spec 15 that sent rrule searching to year 9999.
+    ["FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=30", "Choose a repeat option from the list"],
+    ["FREQ=DAILY;UNTIL=20260714", "The end date can't be before the start date"],
+    // Wednesday Jul 15, Mondays only, ending that Sunday.
+    ["FREQ=WEEKLY;BYDAY=MO;UNTIL=20260719", "That doesn't repeat on any day before the end date"],
+    ["FREQ=DAILY;COUNT=0", "End after 1 to 999 times"],
+  ])("rejects %s under rrule", async (rrule, message) => {
+    const result = await createEvent({ ...TIMED, rrule });
+
+    expect(result).toMatchObject({ success: false, fieldErrors: { rrule: [message] } });
+    expect(event.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps a repeating series on its date when updated", async () => {
+    await updateEvent("event-1", { ...TIMED, rrule: "FREQ=WEEKLY;BYDAY=WE" });
+
+    expect(event.updateMany.mock.calls[0][0].data).toMatchObject({
+      rrule: "FREQ=WEEKLY;BYDAY=WE",
+      startAt: new Date("2026-07-15T20:00:00Z"),
+    });
+  });
+
+  it("stops repeating when the rule is cleared", async () => {
+    await updateEvent("event-1", { ...TIMED, rrule: null });
+
+    expect(event.updateMany.mock.calls[0][0].data).toMatchObject({ rrule: null });
   });
 });
 

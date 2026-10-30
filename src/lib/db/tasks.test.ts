@@ -67,7 +67,13 @@ describe("toTaskView", () => {
       doneLate: false,
       minutesSpent: null,
       workNote: null,
+      repeatLabel: null,
     });
+  });
+
+  it("labels an occurrence of a repeating task", () => {
+    const view = toTaskView(row({ rrule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR" }), occurrence("2026-10-28"), undefined, NY);
+    expect(view.repeatLabel).toBe("Every weekday");
   });
 
   it("treats a tick late that evening in the user's zone as on time", () => {

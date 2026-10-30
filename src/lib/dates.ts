@@ -177,6 +177,16 @@ export function formatDayShort(day: DateStr) {
   return formatDay(day, "EEE, MMM d");
 }
 
+// "October 28"
+export function formatMonthDay(day: DateStr) {
+  return formatDay(day, "MMMM d");
+}
+
+// "Dec 31, 2026"
+export function formatDayWithYear(day: DateStr) {
+  return formatDay(day, "MMM d, yyyy");
+}
+
 // "Oct 19 – 25", "Oct 26 – Nov 1", "Dec 28, 2026 – Jan 3, 2027"
 export function formatWeekRange(weekStart: DateStr) {
   const monday = weekStartOf(weekStart);

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { addDays, resolveTimezone, toDbDate, wallTimeToInstant } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
+import { normalizeRRule } from "@/lib/rrule-builder";
 import { getSession } from "@/lib/session";
 import { END_BEFORE_START, eventIdSchema, eventSchema, type EventInput } from "@/lib/validations/events";
 import type { ActionResult } from "@/types/actions";
@@ -52,11 +53,20 @@ async function resolveEvent(input: unknown) {
   const times = eventTimes(parsed.data, resolveTimezone(session.user));
   if ("success" in times) return times;
 
-  const { title, notes, location, color, allDay } = parsed.data;
+  const { title, notes, location, color, allDay, rrule } = parsed.data;
   return {
     success: true as const,
     userId: session.user.id,
-    data: { title, notes: notes ?? null, location: location ?? null, color, allDay, ...times },
+    data: {
+      title,
+      notes: notes ?? null,
+      location: location ?? null,
+      color,
+      allDay,
+      // Editing a repeating event changes the whole series, so `date` is the series' first day.
+      rrule: rrule ? normalizeRRule(rrule) : null,
+      ...times,
+    },
   };
 }
 

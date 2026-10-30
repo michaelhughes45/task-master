@@ -74,6 +74,7 @@ export async function getEventsInRange(
           allDay: o.allDay,
           startAt: o.startAt,
           endAt: o.endAt,
+          series: event.rrule ? { rrule: event.rrule, startAt: event.startAt, endAt: event.endAt } : null,
         }),
       ),
     )

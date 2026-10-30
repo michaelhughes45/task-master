@@ -23,6 +23,7 @@ function task(overrides: Partial<TaskView> = {}): TaskView {
     doneLate: false,
     minutesSpent: null,
     workNote: null,
+    repeatLabel: null,
     ...overrides,
   };
 }
