@@ -1,18 +1,42 @@
-# Current Feature
+# Current Feature: Date and Timezone Helpers (07)
 
-<!-- Feature name and short description -->
+Build `src/lib/dates.ts`, the single place for "today", week boundaries, date strings and display formatting in the user's timezone. Every later feature depends on it. No UI.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Install `date-fns` and `@date-fns/tz`
+- `DateStr` (`YYYY-MM-DD`) and `WallTime` (`HH:mm`) types in `src/types/dates.ts`
+- `src/lib/dates.ts` with small, pure functions that take `tz` explicitly:
+  - `resolveTimezone(user)` → IANA zone, or `'UTC'` when null
+  - `todayIn(tz, now?)` → `DateStr`
+  - `weekStartOf(day)` (Monday), `weekDays(weekStart)` (7 days), `addDays(day, n)`, `addWeeks(day, n)`
+  - `isBefore(dayA, dayB)`, `isPastDay(day, tz, now?)`
+  - `dayStartInstant(day, tz)`, `dayEndInstant(day, tz)` (exclusive, next day's start), `weekRange(weekStart, tz)`
+  - `toDbDate(day)` / `fromDbDate(date)` for `@db.Date` (via UTC)
+  - `wallTimeToInstant(day, 'HH:mm', tz)` / `instantToWallTime(instant, tz)`
+  - `isDoneLate({ occurrenceDay, scope: 'DAILY' | 'WEEKLY', completedAt, tz })`
+  - Formatters: `formatDayLong` ("Wednesday, October 28"), `formatDayShort` ("Wed, Oct 28"), `formatWeekRange` ("Oct 26 – Nov 1"; across years "Dec 28, 2026 – Jan 3, 2027"), `formatTime` ("9:00 AM"), `formatMinutes` ("25 min", "2h 10m", "1h")
+  - `parseDateParam(value, fallback)` for `?date=` (invalid → fallback)
+- `src/lib/dates.test.ts` covering at least:
+  - `America/New_York` spring forward (Mar 8, 2026) and fall back (Nov 1, 2026): 23/25-hour day ranges, wall times correct
+  - `Pacific/Auckland` and `America/Los_Angeles` late at night: "today" differs from UTC's
+  - Week start for a Sunday, a Monday, across month and year boundaries (Dec 28, 2026 – Jan 3, 2027)
+  - Leap day 2028-02-29
+  - `isDoneLate` daily (ticked next morning) and weekly (ticked the Monday after)
+  - `formatMinutes` edge cases (0, 59, 60, 61, 130)
+- Clock pinned with `vi.setSystemTime` where "now" matters
+- `npm test` passes; `date-logic-reviewer` agent run on `src/lib/dates.ts` and real findings fixed
 
 ## Notes
 
-<!-- Any extra notes -->
+- Never move by days with milliseconds; use date-fns on `TZDate` or calendar math on `DateStr`.
+- Tests must not depend on the machine's timezone; Vitest already runs with `TZ=Pacific/Auckland` (spec 01).
+- Function names can change if clearer.
+- Reference: https://github.com/date-fns/tz
 
 ## History
 
