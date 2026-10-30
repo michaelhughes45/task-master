@@ -1,47 +1,18 @@
-# Current Feature: Tasks Backend (08)
+# Current Feature
 
-One-off (non-repeating) daily and weekly tasks and their completions: Prisma models, queries, server actions and a seeded demo user. No UI (spec 09); recurrence comes in spec 15.
+<!-- Feature name and short description -->
 
 ## Status
 
-In Progress
+<!-- Not Started | In Progress | Completed -->
 
 ## Goals
 
-- Prisma models `Task` and `TaskCompletion` (no `rrule`, no `TaskException` yet), `TaskScope` (`DAILY` | `WEEKLY`) and `Priority` (`LOW` | `NORMAL` | `HIGH`, default `NORMAL`) enums
-  - `Task`: `id`, `userId`, `title`, `notes?`, `scope`, `priority`, `date` (`@db.Date`: the day, or the week's Monday), timestamps; index `[userId, date]`
-  - `TaskCompletion`: `id`, `taskId`, `occurrenceDate` (`@db.Date`), `completedAt` (default now), `minutesSpent?`, `workNote?`; unique `[taskId, occurrenceDate]`
-  - Cascade deletes from `User` and `Task`; migration `tasks`
-- `src/lib/db/tasks.ts` (server-only, every query filtered by `userId`), returning `TaskView` from `src/types/tasks.ts` (id, title, notes, scope, priority, day, done, doneLate, minutesSpent, workNote):
-  - `getDayTasks(userId, day)`: daily tasks for that day with their completion
-  - `getWeekTasks(userId, weekStart)`: weekly tasks for that week with completion
-  - `getWeekDayCounts(userId, weekStart)`: done/total per day for the week strip
-  - `getOpenEarlier(userId, today, tz)`: this week's past-day daily tasks not done (and ones done late today)
-- `src/actions/tasks.ts`: each action uses the session user, validates with Zod (`src/lib/validations/tasks.ts`), checks ownership with `where: { id, userId }`, returns `ActionResult`, revalidates affected paths
-  - `createTask({ title, scope, date, priority?, notes? })` (weekly `date` normalized to the Monday)
-  - `updateTask(id, { title?, priority?, notes?, date? })`
-  - `deleteTask(id)`
-  - `completeTask(taskId, occurrenceDate)` (upsert, `completedAt = now`)
-  - `uncompleteTask(taskId, occurrenceDate)` (delete completion)
-  - `saveCompletionDetails(taskId, occurrenceDate, { minutesSpent?, workNote? })` (0–1440 minutes, note ≤ 500 chars)
-- Done late is derived with `isDoneLate` from `src/lib/dates.ts`, never stored
-- Seed (`prisma/seed.ts`, `npx prisma db seed`, wired in `prisma.config.ts`):
-  - `src/lib/demo-user.ts`: `DEMO_USER_EMAIL = "demo@taskmaster.test"`, `DEMO_USER_PASSWORD`
-  - Demo user created with Better Auth's password hashing, timezone `America/New_York`, email verified
-  - Mockup tasks for the current week (computed from today): a few done, a few missed on past days, two with minutes and notes, five weekly tasks
-  - Re-runnable: deletes and recreates only the demo user's tasks
-- Tests (`src/actions/tasks.test.ts`): validation errors, ownership (another user's id → not found), weekly date normalization, minutes bounds
-- Seed run twice gives the same data, demo user can sign in, `npm run build` passes
+<!-- Goals and requirements -->
 
 ## Notes
 
-- `occurrenceDate` for weekly tasks is the week's Monday.
-- Never trust a `userId` argument in actions; take it from the session.
-- Mock `@/lib/prisma` and `@/lib/session` in tests; never hit the database.
-- Convert `@db.Date` values only with `toDbDate` / `fromDbDate`; day boundaries in the user's timezone via `resolveTimezone`.
-- Schema change through `prisma migrate dev` on the Neon `development` branch only.
-- Implemented: `getDayTasks` / `getWeekTasks` also take `tz` (needed for `doneLate`). Completion actions only accept the task's own day or week (`NOT_AN_OCCURRENCE` otherwise) until recurrence. Re-ticking keeps the original `completedAt`. `saveCompletionDetails` ticks the task too. Moving a task's date moves its completion. The seed has no repeating mockup tasks (those come with spec 15) and refuses to run with `NODE_ENV=production`.
-- Better Auth CLI history: `server-only` imports may need temporary removal when running CLI tools; the seed script runs outside Next, so `src/lib/auth.ts` / `prisma.ts` `server-only` imports may need a workaround for the seed too.
+<!-- Any extra notes -->
 
 ## History
 
@@ -54,3 +25,4 @@ In Progress
 - **2026-10-29 — Auth Email Verification and Password Reset (05):** Resend 6.35 (`src/lib/email.ts`: `onboarding@resend.dev`, text + HTML link emails, `isEmailVerificationEnabled()` on unless exactly `"false"`, client created per send so a missing key only fails sends). Better Auth: explicit `baseURL` from `BETTER_AUTH_URL`, `requireEmailVerification`/`sendOnSignUp` follow the toggle, `autoSignInAfterVerification`, `sendResetPassword` + `revokeSessionsOnPasswordReset`, `rateLimit: { enabled: true }` (in-memory, per instance), `advanced.backgroundTasks` via Next `after()` so email timing doesn't reveal accounts (the resend-verification endpoint still awaits the send). `/forgot-password` (same message always), `/reset-password` (`RequestNewLink` for `?error=INVALID_TOKEN` or an `INVALID_TOKEN` on submit, success → `/sign-in?reset=1`). `signInNotice` (reset/verified/verification-link errors, falls back to `oauthErrorMessage`) with tests; verification links land on `/sign-in?verified=1` (`VERIFY_EMAIL_CALLBACK_URL`), where the `(auth)` layout's streamed redirect sends signed-in users to `/today`. `useAuthForm` gained `callbackURL: null` (stay, `succeeded`), `errorCode` and `submitted`; `ResendVerificationButton` on `EMAIL_NOT_VERIFIED`; sign-up shows "check your email" when verification is on. Forgot/reset Zod schemas with tests. Verified with a production build: reset flow, session revocation, reused/bogus links, verification on (sign-up, blocked sign-in, valid/invalid links). Real Resend delivery untested until `RESEND_API_KEY` is set. Test user `test-verify05@example.com` / `password123` (verified) on `development`.
 - **2026-10-30 — App Shell and Settings (06):** `(app)` layout (`requireUser()`) with `AppSidebar` (desktop, static, `NAV_ITEMS` + `isActivePath`, `UserMenu` dropdown with initials/Settings/Sign out; "This week" slot left for spec 18), `BottomTabs` (phone, 68px + `env(safe-area-inset-bottom)`, root `viewport.viewportFit = "cover"`), disabled `Fab` and header "New" (spec 12). `PageHeader` is rendered by each page (owns the `h1`) and reads the session for the phone avatar → `/settings`, so every app page sets `instant = false`. Placeholder `/today`, `/calendar`, `/todos`, `/review` (`ComingSoon`). `/settings`: Appearance (Light/Dark/System, shares next-themes with the header toggle), timezone `Combobox` (base-ui, `useOptimistic`), "Monday start", review reminder switch (added `lg` size to shadcn `switch`, green when on per mockup), `ChangePasswordDialog` only when `listUserAccounts` has a `credential` account (`revokeOtherSessions: true`, `INVALID_PASSWORD` → friendly message), Sign out. `src/actions/settings.ts` (`updateTimezone`, `updateReviewNotify`, `setTimezoneIfMissing` via `updateMany where timezone: null`) returning `ActionResult` (`src/types/actions.ts`), with tests. `isValidTimezone` accepts `Intl.supportedValuesOf` plus any name Intl accepts (Node's list lacks `UTC` and `Asia/Kolkata`), rejects offsets. `TimezoneSync` fills a null timezone once from the browser. New hooks `useSignOut`, `useMounted`; `useAuthForm` gained `onSuccess`; `changePasswordSchema`; `userInitials`. shadcn `avatar`, `combobox` (+ `input-group`, `textarea`), `dialog`, `dropdown-menu`, `separator`, `switch`. Verified on a production build (desktop and 375px, dark mode, timezone save, switch, change password, auto-fill). Google user's auto-fill and hidden Change password not browser-tested.
 - **2026-10-30 — Date and Timezone Helpers (07):** date-fns 4.4 + @date-fns/tz 1.5. `src/lib/dates.ts`: `resolveTimezone` (invalid/null → UTC), `todayIn`, `isPastDay`, `isBefore`, `addDays`/`addWeeks`/`weekStartOf`/`weekDays` on `DateStr` via `Date.UTC`, `dayStartInstant`/`dayEndInstant` (exclusive)/`weekRange` (snaps to Monday), `toDbDate`/`fromDbDate`, `wallTimeToInstant`/`instantToWallTime`, `isDoneLate`, `formatDayLong`/`formatDayShort`/`formatWeekRange` ("Oct 19 – 25", "Oct 26 – Nov 1", cross-year with years)/`formatTime`/`formatMinutes`, `parseDateParam` + `isDateStr` (real days 1900-01-01 to 2999-12-31 only) and `isWallTime`. Types `DateStr`, `WallTime`, `TaskScope` in `src/types/dates.ts`. The `TZDate` constructor resolves repeated wall times differently depending on the process timezone (and mis-steps days under `Pacific/Apia`), so `wallTimeToInstant` is built on `tzOffset` + `Date.UTC`: repeated time → first occurrence, skipped time → pre-gap offset (RFC 5545). 76 tests (NY DST days, Auckland/LA late night, Havana repeated midnight, São Paulo skipped midnight, year boundaries, leap day); also pass with process TZ UTC, Los Angeles, Apia, Havana. `date-logic-reviewer`: no High/Medium; Low year-range finding fixed.
+- **2026-10-30 — Tasks Backend (08):** `Task` + `TaskCompletion` models (`TaskScope`, `Priority`, `date`/`occurrenceDate` as `@db.Date`, unique `[taskId, occurrenceDate]`, cascades) and `tasks` migration on `development`. `src/lib/db/tasks.ts` (`server-only`): `getDayTasks`/`getWeekTasks` (take `tz` too, for `doneLate`), `getWeekDayCounts` (7 `DayCount`s Mon–Sun), `getOpenEarlier` (this week's earlier days not done, or ticked today; `[]` on Monday), shared `TASK_SELECT` + exported `toTaskView` (completion matched to the task's own date). `TaskView`/`DayCount` in `src/types/tasks.ts` (`Priority` from generated enums). `src/actions/tasks.ts`: `createTask` (weekly → Monday), `updateTask` (`findFirst {id, userId}` then a `$transaction` that moves the completion with the date), `deleteTask` (`deleteMany {id, userId}`, count 0 → not found), and `completeTask`/`uncompleteTask`/`saveCompletionDetails` through `resolveOccurrence` (session, Zod, ownership, and only the task's own day/week until recurrence → "That task isn't planned for that date."). Re-ticking keeps the first `completedAt` (`update: {}`); saving details also ticks. `src/lib/validations/tasks.ts` (title ≤ 200, notes ≤ 2000, empty → null, minutes int 0–1440, note ≤ 500), `fieldErrors` via `z.flattenError`. Seed `prisma/seed.ts` (`migrations.seed: "tsx prisma/seed.ts"`, standalone client, refuses `NODE_ENV=production`): upserts the demo user (`src/lib/demo-user.ts`, `demo@taskmaster.test` / `demo-password-123`, Better Auth `hashPassword` + credential account, verified, `America/New_York`), replaces its tasks in one transaction: 9 one-off daily + 5 weekly mockup tasks for the current week, done ones ticked 6 PM that day (or now for today/weekly), staggered `createdAt` for order; repeating mockup tasks wait for spec 15. 33 new tests (actions + queries, incl. NY day boundary and the Nov 1 DST Sunday). Verified: seed twice → same 14 tasks, demo sign-in on a production build.
