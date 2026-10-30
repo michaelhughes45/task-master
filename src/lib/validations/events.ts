@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isDateStr, isWallTime } from "@/lib/dates";
+import { checkRepeat, rruleField } from "@/lib/validations/repeat";
 
 export const END_BEFORE_START = "End time must be after the start time";
 
@@ -28,8 +29,11 @@ export const eventSchema = z
     location: optionalText(200),
     notes: optionalText(2000),
     color: z.enum(["BLUE", "GREEN"]),
+    rrule: rruleField,
   })
   .superRefine((event, ctx) => {
+    // Events repeat on their date's wall-clock weekday, like daily tasks.
+    checkRepeat(ctx, event.rrule, "DAILY", event.date);
     if (event.allDay) return;
     if (!event.startTime) ctx.addIssue({ code: "custom", path: ["startTime"], message: "Choose a start time" });
     if (!event.endTime) ctx.addIssue({ code: "custom", path: ["endTime"], message: "Choose an end time" });

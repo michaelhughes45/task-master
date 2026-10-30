@@ -18,6 +18,8 @@ export interface TaskView {
   doneLate: boolean;
   minutesSpent: number | null;
   workNote: string | null;
+  // "Repeats daily"; null for a one-off task.
+  repeatLabel: string | null;
 }
 
 // Daily tasks done / planned on one day, for the week strip.

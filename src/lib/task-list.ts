@@ -48,6 +48,7 @@ export function draftTask(id: string, title: string, scope: TaskScope, day: Date
     doneLate: false,
     minutesSpent: null,
     workNote: null,
+    repeatLabel: null,
   };
 }
 

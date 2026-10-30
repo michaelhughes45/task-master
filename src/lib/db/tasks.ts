@@ -11,6 +11,7 @@ import {
 } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { expandTask, type TaskOccurrence } from "@/lib/recurrence";
+import { describeRRule } from "@/lib/rrule-builder";
 import type { Prisma } from "@/generated/prisma/client";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { DayCount, TaskView } from "@/types/tasks";
@@ -69,6 +70,7 @@ export function toTaskView(
       isDoneLate({ occurrenceDay: occurrence.date, scope: task.scope, completedAt: completion.completedAt, tz }),
     minutesSpent: completion?.minutesSpent ?? null,
     workNote: completion?.workNote ?? null,
+    repeatLabel: task.rrule ? describeRRule(task.rrule, occurrence.occurrenceDate) : null,
   };
 }
 

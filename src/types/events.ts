@@ -18,6 +18,8 @@ export interface EventView {
   allDay: boolean;
   startAt: Date;
   endAt: Date;
+  // The stored series a repeating event's occurrence came from; null for a one-off event.
+  series: { rrule: string; startAt: Date; endAt: Date } | null;
 }
 
 // The event form's fields, as strings the inputs hold. Times are "HH:mm" in the user's zone.
@@ -30,6 +32,7 @@ export interface EventFormValues {
   location: string;
   notes: string;
   color: EventColor;
+  rrule: string | null;
 }
 
 // One event ready for the details dialog: labels formatted on the server in the user's zone,
@@ -42,5 +45,8 @@ export interface EventDetails {
   color: EventColor;
   dayLabel: string;
   timeLabel: string;
+  // "Weekly on Mon, Wed, Fri"; null for a one-off event.
+  repeatLabel: string | null;
+  // A repeating event's form holds the series' first date and times: editing changes them all.
   form: EventFormValues;
 }
