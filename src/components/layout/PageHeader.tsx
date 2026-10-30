@@ -1,8 +1,7 @@
-import { Plus } from "lucide-react";
 import Link from "next/link";
+import { NewItemButton } from "@/components/items/NewItemButton";
 import { UserAvatar } from "@/components/layout/UserAvatar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/session";
 
 interface PageHeaderProps {
@@ -24,11 +23,7 @@ export async function PageHeader({ title, kicker }: PageHeaderProps) {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle className="size-11 rounded-lg text-muted-foreground md:size-10 md:rounded-md" />
-        {/* Opens the New task/event dialog once spec 12 builds it. */}
-        <Button disabled className="hidden h-10 gap-2 pr-4 pl-3 text-[14.5px] font-semibold md:inline-flex">
-          <Plus className="size-[18px]" aria-hidden="true" />
-          New
-        </Button>
+        <NewItemButton />
         <Link
           href="/settings"
           aria-label="Settings"
