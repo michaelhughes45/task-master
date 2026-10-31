@@ -6,7 +6,9 @@ import {
   dayEndInstant,
   dayStartInstant,
   formatDayLong,
+  formatDayMedium,
   formatDayShort,
+  formatWeekday,
   formatMinutes,
   formatMonth,
   formatTime,
@@ -416,6 +418,8 @@ describe("formatters", () => {
     expect(formatDayLong("2026-10-28")).toBe("Wednesday, October 28");
     expect(formatDayShort("2026-10-28")).toBe("Wed, Oct 28");
     expect(formatDayLong("2028-02-29")).toBe("Tuesday, February 29");
+    expect(formatDayMedium("2026-11-01")).toBe("Sunday, Nov 1");
+    expect(formatWeekday("2026-10-28")).toBe("Wed");
   });
 
   it("formats months", () => {

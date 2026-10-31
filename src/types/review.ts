@@ -51,6 +51,8 @@ export interface ReviewTaskItem {
 
 export interface ReviewDoneItem extends ReviewTaskItem {
   late: boolean;
+  // The day it was ticked, in the user's zone.
+  completedOn: DateStr;
   minutesSpent: number | null;
 }
 

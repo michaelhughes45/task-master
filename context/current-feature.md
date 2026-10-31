@@ -1,18 +1,34 @@
-# Current Feature
+# Current Feature: Weekly Review Page (20)
 
-<!-- Feature name and short description -->
+Build `/review` and `/review/[weekStart]` from the mockup, showing the numbers from spec 19 with a list of past weeks.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `/review` shows the most recent **completed** week (the Monday–Sunday before the current week); from Sunday 7 PM (user's timezone) it shows the current week instead ("ready")
+- `/review/[weekStart]` shows any week; invalid or non-Monday dates redirect to the right Monday
+- Header kicker "Weekly review", title "Week of Oct 19 – 25"
+- **Weeks list** (left on desktop, select/horizontal list on phones): last 12 weeks with completion rate in mono; selected week in primary-soft; under it "This week's review is ready Sunday, Nov 1 at 7:00 PM."
+- **Summary sentence**: "You finished 28 of 36 tasks (78%), up from 72% the week before, and tracked 14h 20m of work. 3 tasks were ticked off late." (wording adjusts with no previous week or no time tracked)
+- **Stats strip** (hairline grid): Completion (▲/▼ points vs. last week in success-ink/warning), Tasks done, Time tracked, Done late
+- **Day by day** CSS bar chart (no chart library): planned track sunken, done fill green, label and `done/planned` under each bar, legend
+- **Daily vs weekly** split bars and **Time by task** bars (primary)
+- **Missed** and **Done late** lists; **Most-missed repeating tasks** with warning bars and hint line; **What you worked on** notes
+- Empty states: week with nothing planned, and new users ("Your first review will be ready on Sunday.")
+- Accessible: bars have text values next to them; colour is never the only signal
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/app/(app)/review/page.tsx`, `src/app/(app)/review/[weekStart]/page.tsx`, `src/components/review/*` (WeeksList, ReviewSummary, StatsStrip, DayBars, SplitBars, TimeByTask, MissedList, LateList, MostMissed, NotesList — PascalCase per project convention)
+- Data comes from spec 19: `getWeeklyReview(userId, weekStart, tz, now?)` and `getReviewWeeks(userId, tz, now?)` in `src/lib/db/review.ts`; pure `computeWeeklyReview` in `src/lib/review.ts`. Spec 19 marks not-yet-over occurrences as `open`, not missed (relevant when the current week shows on Sunday evening).
+- The "ready" rule (Sunday ≥ 19:00 in the user's zone) and the default-week choice should be a pure, tested helper in `src/lib` (week boundaries, DST Sunday, timezone).
+- `getReviewWeeks` returns only weeks with planned tasks; the list shows the latest 12 of those. The selected week should still be shown/highlighted even if outside that list.
+- Pages read the session and params, so set `export const instant = false`; `params` is a Promise, validate with `parseDateParam` + `weekStartOf`.
+- Reference: `context/mockup/app-desktop.html` (Weekly review screen), tokens in `context/mockup/README.md`.
+- Testing: seeded previous week renders like the mockup (seed currently has no previous-week data, so it may need extending); ticking a past task late then reloading updates numbers; week switching updates the URL; phone layout with no horizontal scroll; light and dark; `npm run build` passes.
 
 ## History
 

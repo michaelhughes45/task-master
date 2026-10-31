@@ -1,18 +1,28 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/layout/ComingSoon";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ReviewView } from "@/components/review/ReviewView";
+import { formatWeekRange, resolveTimezone } from "@/lib/dates";
+import { defaultReviewWeek } from "@/lib/review-view";
+import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Weekly review" };
 
-// The header reads the session, so this page blocks like the layout does.
+// Reads the session.
 export const instant = false;
 
-// Placeholder until the weekly review page (spec 20).
-export default function ReviewPage() {
+// Last week's review, or this week's once it's ready on Sunday evening.
+export default async function ReviewPage() {
+  const user = await requireUser();
+  const tz = resolveTimezone(user);
+  const now = new Date();
+  const weekStart = defaultReviewWeek(tz, now);
+
   return (
     <>
-      <PageHeader title="Weekly review" />
-      <ComingSoon />
+      <PageHeader kicker="Weekly review" title={`Week of ${formatWeekRange(weekStart)}`} />
+      <div className="w-full max-w-[1240px] px-4 py-6 md:px-8">
+        <ReviewView userId={user.id} weekStart={weekStart} tz={tz} now={now} />
+      </div>
     </>
   );
 }
