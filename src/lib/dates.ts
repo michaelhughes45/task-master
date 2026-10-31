@@ -177,6 +177,16 @@ export function formatDayShort(day: DateStr) {
   return formatDay(day, "EEE, MMM d");
 }
 
+// "Sunday, Nov 1"
+export function formatDayMedium(day: DateStr) {
+  return formatDay(day, "EEEE, MMM d");
+}
+
+// "Wed"
+export function formatWeekday(day: DateStr) {
+  return formatDay(day, "EEE");
+}
+
 // "October 28"
 export function formatMonthDay(day: DateStr) {
   return formatDay(day, "MMMM d");

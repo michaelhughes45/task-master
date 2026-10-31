@@ -6,7 +6,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 const { prisma } = await import("@/lib/prisma");
-const { getReviewWeeks, getWeeklyReview } = await import("./review");
+const { getReviewWeeks, getWeekRates, getWeeklyReview } = await import("./review");
 
 const findMany = vi.mocked(prisma.task.findMany);
 const findCompletions = vi.mocked(prisma.taskCompletion.findMany);
@@ -146,6 +146,51 @@ describe("getWeeklyReview", () => {
     // Mon–Thu missed; Fri (today), Sat and Sun still open.
     expect(result.totals).toMatchObject({ planned: 7, done: 0, missed: 4, open: 3 });
     expect(result.comparison).toBeNull();
+  });
+});
+
+describe("getWeekRates", () => {
+  it("loads all the weeks in one query per scope and rates each", async () => {
+    tasksByScope([
+      // Every day from Oct 5; done every day of the week of Oct 19 and on Oct 12.
+      row({
+        id: "stretch",
+        title: "Stretch",
+        date: day("2026-10-05"),
+        rrule: "FREQ=DAILY",
+        completions: [
+          done("2026-10-12", "2026-10-12T16:00:00Z"),
+          ...["19", "20", "21", "22", "23", "24", "25"].map((d) => done(`2026-10-${d}`, `2026-10-${d}T16:00:00Z`)),
+        ],
+      }),
+      row({ id: "run", title: "Long run", scope: "WEEKLY", date: day("2026-10-19") }),
+    ]);
+
+    const rates = await getWeekRates("user-1", ["2026-10-19", "2026-10-05", "2026-10-12"], NY, NOW);
+
+    const wheres = findMany.mock.calls.map(([args]) => args?.where);
+    expect(wheres).toHaveLength(2);
+    expect(wheres).toContainEqual(
+      expect.objectContaining({
+        scope: "DAILY",
+        OR: [
+          { rrule: null, date: { gte: day("2026-10-05"), lte: day("2026-10-25") } },
+          { rrule: { not: null }, date: { lte: day("2026-10-25") } },
+        ],
+      }),
+    );
+    // 7 of 8 (the weekly run wasn't done), 1 of 7, 0 of 7.
+    expect([...rates]).toEqual([
+      ["2026-10-19", 88],
+      ["2026-10-05", 0],
+      ["2026-10-12", 14],
+    ]);
+  });
+
+  it("gives null for a week with nothing planned and skips the query for no weeks", async () => {
+    expect(await getWeekRates("user-1", [], NY, NOW)).toEqual(new Map());
+    expect(findMany).not.toHaveBeenCalled();
+    expect(await getWeekRates("user-1", ["2026-10-19"], NY, NOW)).toEqual(new Map([["2026-10-19", null]]));
   });
 });
 

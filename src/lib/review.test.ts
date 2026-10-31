@@ -106,6 +106,7 @@ describe("computeWeeklyReview", () => {
       ["Just late", true],
     ]);
     expect(result.missed.map((m) => m.title)).toEqual(["Weekly missed", "Missed"]);
+    expect(result.done.map((d) => d.completedOn)).toEqual(["2026-10-25", "2026-10-26", "2026-10-21", "2026-10-22"]);
   });
 
   it("counts a weekly task once for the week and ignores occurrences from other weeks", () => {

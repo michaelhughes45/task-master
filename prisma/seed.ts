@@ -3,7 +3,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { generateRandomString, hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { EventColor, Priority } from "../src/generated/prisma/enums";
-import { addDays, isBefore, todayIn, toDbDate, wallTimeToInstant, weekStartOf } from "../src/lib/dates";
+import { addDays, addWeeks, isBefore, todayIn, toDbDate, wallTimeToInstant, weekStartOf } from "../src/lib/dates";
 import {
   DEMO_USER_EMAIL,
   DEMO_USER_NAME,
@@ -16,11 +16,18 @@ const prisma = new PrismaClient({
   adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL }),
 });
 
+interface SeedDone {
+  minutes?: number;
+  note?: string;
+  // Earlier weeks only: days after the occurrence's day (a weekly task's Monday) it was ticked.
+  ticked?: number;
+}
+
 interface SeedTask {
   title: string;
   priority?: Priority;
   // Ticked off, if its day has come. Past-day tasks without this count as missed.
-  done?: { minutes?: number; note?: string };
+  done?: SeedDone;
 }
 
 // The mockup's one-off tasks, by weekday (0 = Monday).
@@ -44,7 +51,8 @@ interface SeedSeries {
   done: Record<number, SeedTask["done"]>;
 }
 
-// The mockup's repeating daily tasks, starting this Monday. They come first in each day's list.
+// The mockup's repeating daily tasks, starting with the earliest past week. They come first in
+// each day's list.
 const REPEATING: SeedSeries[] = [
   { title: "Review inbox", rrule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", done: { 0: { minutes: 15 }, 1: {}, 2: { minutes: 20 } } },
   { title: "Read 20 pages", rrule: "FREQ=DAILY", done: { 0: {} } },
@@ -61,6 +69,71 @@ const WEEKLY: (SeedTask & { rrule?: string })[] = [
   },
   { title: "Plan next week's meals" },
   { title: "Long run (10 km)", rrule: "FREQ=WEEKLY" },
+];
+
+interface PastWeek {
+  // Occurrences of the repeating tasks ticked off, by title and weekday (0 = Monday; a weekly
+  // series' occurrence is its Monday).
+  series: Record<string, Record<number, SeedDone>>;
+  // One-off tasks by weekday (0 = Monday).
+  daily: SeedTask[][];
+  weekly: SeedTask[];
+}
+
+// Earlier weeks for the weekly review, newest first. Last week follows the mockup's review.
+const PAST_WEEKS: PastWeek[] = [
+  {
+    series: {
+      "Review inbox": { 0: { minutes: 15 }, 1: { minutes: 20 }, 2: { minutes: 20 }, 3: { minutes: 20 }, 4: { minutes: 20 } },
+      "Read 20 pages": { 0: { ticked: 1 }, 2: {}, 4: {}, 6: {} },
+      "Stretch for 10 minutes": { 0: {}, 1: {}, 2: {}, 4: {}, 5: {}, 6: {} },
+      "Long run (10 km)": { 0: { minutes: 58, note: "Felt easier than last week.", ticked: 5 } },
+    },
+    daily: [
+      [{ title: "Call the bank" }],
+      [{ title: "Book dentist appointment", done: { minutes: 10 } }],
+      [
+        { title: "Pay phone bill", priority: "HIGH", done: { ticked: 2 } },
+        { title: "Deep clean the kitchen", done: { minutes: 60, note: "Did the oven and the fridge." } },
+      ],
+      [{ title: "Spanish homework", done: { minutes: 40, note: "Past tense exercises, pages 54 to 57." } }],
+      [{ title: "Renew car registration", done: { minutes: 25 } }],
+      [],
+      [{ title: "Water the plants" }],
+    ],
+    weekly: [
+      { title: "Grocery run", done: { minutes: 45, ticked: 7 } },
+      { title: "Clean the bathroom" },
+      {
+        title: "Finish chapter 2 notes",
+        priority: "HIGH",
+        done: { minutes: 215, note: "Outlined the whole chapter and started the summary.", ticked: 0 },
+      },
+      { title: "Update resume" },
+    ],
+  },
+  {
+    series: {
+      "Review inbox": { 0: { minutes: 15 }, 1: { minutes: 15 }, 2: { minutes: 20 }, 3: { minutes: 15 } },
+      "Read 20 pages": { 0: {}, 1: {}, 3: {}, 5: {} },
+      "Stretch for 10 minutes": { 0: {}, 1: {}, 3: {}, 4: {}, 5: {} },
+      "Long run (10 km)": { 0: { minutes: 62, ticked: 6 } },
+    },
+    daily: [
+      [{ title: "Order printer ink", done: {} }],
+      [],
+      [{ title: "Cancel gym trial" }],
+      [{ title: "Send birthday card", done: { minutes: 15 } }],
+      [],
+      [{ title: "Fix the bike tire", done: { minutes: 35, note: "New inner tube; the old one had two holes." } }],
+      [],
+    ],
+    weekly: [
+      { title: "Grocery run", done: { minutes: 50 } },
+      { title: "Finish chapter 1 notes", done: { minutes: 180 } },
+      { title: "Sort the closet" },
+    ],
+  },
 ];
 
 interface SeedEvent {
@@ -158,6 +231,51 @@ function completionData(done: SeedTask["done"], day: string, today: string, now:
   ];
 }
 
+// Earlier weeks were ticked at 6 PM on the day given (but never after now).
+function pastCompletion(done: SeedDone, occurrenceDate: string, defaultTicked: number, now: Date) {
+  const ticked = wallTimeToInstant(addDays(occurrenceDate, done.ticked ?? defaultTicked), "18:00", DEMO_USER_TIMEZONE);
+  return {
+    occurrenceDate: toDbDate(occurrenceDate),
+    completedAt: ticked < now ? ticked : now,
+    minutesSpent: done.minutes,
+    workNote: done.note,
+  };
+}
+
+// A repeating task's ticks in the earlier weeks.
+function pastSeriesCompletions(title: string, monday: string, now: Date) {
+  return PAST_WEEKS.flatMap((week, i) =>
+    Object.entries(week.series[title] ?? {}).map(([weekday, done]) =>
+      pastCompletion(done, addDays(addWeeks(monday, -(i + 1)), Number(weekday)), 0, now),
+    ),
+  );
+}
+
+// The earlier weeks' one-off tasks; weekly ones were ticked on Friday unless given.
+function pastOneOffs(monday: string, now: Date) {
+  return PAST_WEEKS.flatMap((week, i) => {
+    const weekMonday = addWeeks(monday, -(i + 1));
+    const daily = week.daily.flatMap((tasks, weekday) => {
+      const day = addDays(weekMonday, weekday);
+      return tasks.map((task) => ({
+        task,
+        scope: "DAILY" as const,
+        day,
+        rrule: undefined,
+        completions: task.done ? [pastCompletion(task.done, day, 0, now)] : [],
+      }));
+    });
+    const weekly = week.weekly.map((task) => ({
+      task,
+      scope: "WEEKLY" as const,
+      day: weekMonday,
+      rrule: undefined,
+      completions: task.done ? [pastCompletion(task.done, weekMonday, 4, now)] : [],
+    }));
+    return [...daily, ...weekly];
+  });
+}
+
 function eventTimes(day: string, event: SeedEvent) {
   return {
     startAt: wallTimeToInstant(day, event.start, DEMO_USER_TIMEZONE),
@@ -172,15 +290,20 @@ async function main() {
   const monday = weekStartOf(today);
   const userId = await upsertDemoUser();
 
+  const seriesStart = addWeeks(monday, -PAST_WEEKS.length);
+
   const repeating = REPEATING.map((series) => ({
     task: series,
     scope: "DAILY" as const,
-    day: monday,
+    day: seriesStart,
     rrule: series.rrule,
-    completions: Object.entries(series.done).flatMap(([weekday, done]) => {
-      const day = addDays(monday, Number(weekday));
-      return completionData(done, day, today, now, day);
-    }),
+    completions: [
+      ...pastSeriesCompletions(series.title, monday, now),
+      ...Object.entries(series.done).flatMap(([weekday, done]) => {
+        const day = addDays(monday, Number(weekday));
+        return completionData(done, day, today, now, day);
+      }),
+    ],
   }));
   const daily = DAILY.flatMap((tasks, i) => {
     const day = addDays(monday, i);
@@ -195,11 +318,14 @@ async function main() {
   const weekly = WEEKLY.map((task) => ({
     task,
     scope: "WEEKLY" as const,
-    day: monday,
+    day: task.rrule ? seriesStart : monday,
     rrule: task.rrule,
-    completions: completionData(task.done, today, today, now, monday),
+    completions: [
+      ...(task.rrule ? pastSeriesCompletions(task.title, monday, now) : []),
+      ...completionData(task.done, today, today, now, monday),
+    ],
   }));
-  const tasks = [...repeating, ...daily, ...weekly];
+  const tasks = [...pastOneOffs(monday, now), ...repeating, ...daily, ...weekly];
 
   const events = EVENTS.flatMap((dayEvents, i) =>
     dayEvents.map((event) => ({
@@ -251,7 +377,8 @@ async function main() {
 
   console.log(
     `Seeded ${DEMO_USER_EMAIL}: ${tasks.length} tasks (${repeating.length + 1} repeating) and ` +
-      `${events.length + REPEATING_EVENTS.length} events (${REPEATING_EVENTS.length} repeating) from the week of ${monday}`,
+      `${events.length + REPEATING_EVENTS.length} events (${REPEATING_EVENTS.length} repeating); tasks from the week of ` +
+      `${seriesStart}, events from the week of ${monday}`,
   );
 }
 

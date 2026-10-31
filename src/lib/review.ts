@@ -132,7 +132,17 @@ export function computeWeeklyReview(input: WeeklyReviewInput): WeeklyReview {
   const done: ReviewDoneItem[] = week.flatMap((o) =>
     o.completion === null
       ? []
-      : [{ taskId: o.taskId, title: o.title, scope: o.scope, day: o.day, late: isLate(o), minutesSpent: o.completion.minutesSpent }],
+      : [
+          {
+            taskId: o.taskId,
+            title: o.title,
+            scope: o.scope,
+            day: o.day,
+            late: isLate(o),
+            completedOn: todayIn(tz, o.completion.completedAt),
+            minutesSpent: o.completion.minutesSpent,
+          },
+        ],
   );
   const missed = week.filter(isMissed).map(({ taskId, title, scope, day }) => ({ taskId, title, scope, day }));
   const totals = rateOf(week);
