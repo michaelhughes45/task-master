@@ -1,64 +1,18 @@
-# Current Feature: Full Code Scan Fixes
+# Current Feature
 
-Fix the 4 Medium findings and the Low tidy-ups from the full-project `code-scanner` pass (2026-11-02, three scans covering every source file).
+<!-- Feature name and short description -->
 
 ## Status
 
-In Progress
+<!-- Not Started | In Progress | Completed -->
 
 ## Goals
 
-### Medium
-
-- **M1. Far-future occurrence dates:** the event and task occurrence actions refuse occurrence dates/instants outside a sensible range (e.g. years 1900–2100, or a fixed horizon past the series start), so rrule can't be made to step to year 2999/9999 (`occurrenceStartSchema` in `src/lib/validations/events.ts`, `occurrenceDateSchema` in `src/lib/validations/tasks.ts`, `resolveOccurrence` / `resolveSeries`). Unit tests for the rejected dates.
-- **M2. Push subscription cap:** `saveSubscription` refuses new endpoints beyond a small per-user cap (e.g. 10); re-saving an existing endpoint still works. Unit tests.
-- **M3. Loading and error states:** `loading.tsx` for `/today`, `/calendar`, `/todos` and `/review`, an `error.tsx` for the `(app)` section, and the review page renders its header first with `ReviewView` inside `<Suspense>`.
-- **M4. Dialog code split:** the New item form contents (event/task forms, repeat controls, rrule) and the event details body load only when a dialog opens, not in every signed-in page's first-load bundle.
-
-### Low tidy-ups
-
-- Delete unused code: `src/components/ComingSoon.tsx`, `src/components/settings/ReviewNotifySetting.tsx`, `weekRange` and `isPastDay` in `src/lib/dates.ts` (with their tests) and exported types nothing imports.
-- Split large files:
-  - In `TaskRow.tsx`, move `TaskTags` and `RenameInput` into their own files and the scope-prompt logic into a hook.
-  - Move the occurrence code in `src/actions/events.ts` into `event-occurrences.ts`, sharing helpers through `src/lib/event-actions.ts`.
-  - Move `ColorPicker` out of `EventForm.tsx`.
-  - Split `AllDayEvent` and `MonthEventChip` out of `EventBlock.tsx`.
-- Remove duplicates:
-  - One shared event colour class map.
-  - The events action reuses the `db/events.ts` select shape.
-  - Shared native input class.
-  - Shared auth text-link class.
-  - `AppearanceSetting` reuses `SegmentedControl`.
-  - One shared review page shell for `/review` and `/review/[weekStart]`.
-- Small fixes:
-  - The calendar grid height and hour lines come from `HOUR_HEIGHT`.
-  - `todos/page.tsx` uses weekday formatters instead of `.split(",")`.
-  - Drop the `"use client"` that `OpenEarlierCard` doesn't need.
-- Today re-renders: the per-minute clock no longer re-renders every task row, by moving `useCurrentMinute` down to the schedule/now cards and memoizing rows where it helps.
-### Low fixes
-
-- **Push timeout:** `webpush.sendNotification` in `src/lib/push.ts` gets a `timeout` of about 10 s, so a stalled push service counts as failed instead of using up the cron's 60 s. Unit test that the option is passed.
-- **Seed guard:** `prisma/seed.ts` refuses to run unless it is clearly pointed at development, either with an explicit opt-in env var or an allowlisted dev database host, not only `NODE_ENV`.
-
-### Checks
-
-- `npm run lint`, `npm test` and `npm run build` pass. Verify in the browser at 1280px and 375px.
+<!-- Goals and requirements -->
 
 ## Notes
 
-- Findings come from the full-project `code-scanner` pass. Check each one against the code before changing it.
-- Not in scope, so leave them for a later fix unless asked:
-  - "7:00 PM" wording in the test notification and `ReviewReminder`
-  - `timezone` `input: false`
-  - unused `updateReviewNotify` action
-  - `useTaskList` catch
-  - month view tap targets
-  - `task-actions.ts` `server-only`
-  - exceptions loaded for the whole series
-  - repeated review loads
-  - serial Settings awaits
-- Check the installed Next.js docs (`node_modules/next/dist/docs/`) for `loading.tsx`, `error.tsx`, `next/dynamic` and Cache Components rules before writing them. Pages use `instant = false`.
-- Refactors must not change behaviour. Existing tests should pass unchanged except where a deleted export's tests go too.
+<!-- Any extra notes -->
 
 ## History
 
@@ -91,3 +45,4 @@ In Progress
 - **2026-11-02 — Auth Audit Fixes:** Both Low findings from the `auth-auditor` report (`docs/audit-results/AUTH_SECURITY_REVIEW.md`, now marked fixed). (1) `isPushServiceEndpoint` in `src/lib/validations/push.ts`: https only, no userinfo or port, host `fcm.googleapis.com` or a subdomain of `push.services.mozilla.com`/`notify.windows.com`/`push.apple.com`; `pushSubscriptionSchema` refines with it so `saveSubscription` refuses other endpoints, `sendPush` skips stored rows that fail it (counted as failed, logged by host), `removeSubscription` still accepts any https endpoint so old rows can be removed. (2) `rateLimit: { enabled: true, storage: "database" }` in `auth.ts` with the CLI-generated `RateLimit` model (`npx auth@1.7.14 generate --config src/lib/auth.ts`; needs `server-only` removed temporarily from `auth.ts`, `prisma.ts`, `env.ts` and `email.ts`) and `rate_limit` migration on `development`; Better Auth deletes expired rows itself, rows keyed `IP|path` (all-zeros IP locally without `x-forwarded-for`). 20 new tests (752 total). Verified on a production build: 3 wrong sign-ins → 401, 4th → 429 with a `rateLimit` row, a freshly started server still returns 429, correct password after the window → 200. Real browser push subscribe + test notification not re-run.
 
 - **2026-11-02 — Code Scan Fixes:** All 6 findings from the `code-scanner` pass (1 Medium, 5 Low; targeted scan, each verified first). (M1) `src/lib/db/tasks.ts` loads each week once per request via React `cache()` (`dailyWeek`/`weeklyWeek` by user + Monday); `getDayTasks`, `getOpenEarlier` (`occurrence.date < today`), `getWeekDayCounts` and the sidebar's `getWeekProgress` slice it, so `/today` runs 2 occurrence loads instead of ~5; sidebar "This week" moved to `WeekProgressBar.tsx` (`SidebarWeekProgress` behind `<Suspense>` in the `(app)` layout, empty bar with `aria-busy` while loading), `AppSidebar` takes a `progress` slot. Skipping ended series in SQL left out (needs a schema change). (L1) `src/lib/action-helpers.ts` (`NOT_SIGNED_IN`, `invalid()`) and `Failure` in `src/types/actions.ts`, used by all four action files. (L2) `src/actions/tasks.ts` (create/update/delete, 414 → 95 lines), `task-completions.ts`, `task-occurrences.ts`; shared `src/lib/task-actions.ts` (`TASK_NOT_FOUND`, `revalidateTasks`, `normalizeTaskDate`, `findOwnedTask`) and `src/lib/task-exceptions.ts` (`TASK_EXCEPTION_SELECT`, `fromDbException`/`toDbException`, also used by `db/tasks.ts` and `db/review.ts`); tests split the same way, unchanged. (L3) cron sends 5 users at a time with `Promise.allSettled`, `maxDuration = 60`. (L4) `lastTestPushAt` on `User` (`test_push_cooldown` migration on `development`; production needs `migrate deploy`), `sendTestNotification` claims the send with one conditional `updateMany` (30 s cooldown) → "A test was just sent. Wait 30 seconds and try again." (L5) `next.config.ts` `headers()`: `nosniff`, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin` on all routes; `/sw.js` `no-cache, no-store, must-revalidate` + `default-src 'self'` CSP (per the Next 16 PWA guide). (L6) moved-in completion lookup is one query with `taskId in` + `occurrenceDate in`, filtered by key. 4 new tests (756 total); two query tests updated for the week-wide range. Verified on a production build with the demo user (1280px, 375px): headers via curl, sidebar streams 0/20 → 1/20 on a tick and back, To-dos strip matches rows, Review/Calendar/Settings 200, no console errors. Request-level dedup not observable in Vitest (React `cache` is a no-op outside RSC); cooldown with a real subscription and batched cron against real push services untested.
+- **2026-11-02 — Full Code Scan Fixes:** The 4 Medium findings, the Low tidy-ups and two Low fixes from a full-project `code-scanner` pass (three scans, every source file read). (M1) `isDateStr` now accepts 1970-01-01 to 2100-12-31 (was 1900–2999): rrule stepping a daily rule from 1970 to 2100 takes ~83 ms vs ~670 ms to 2999; `occurrenceStartSchema` refines the instant's UTC day the same way, so occurrence actions refuse far-future dates before loading the series (URL dates outside the range fall back to today). (M2) `saveSubscription` counts the user's other endpoints and refuses past `MAX_SUBSCRIPTIONS` = 10 (in `validations/push.ts`, since a `"use server"` file can only export async functions); re-saving a device still works. (M3) `loading.tsx` for `/today`, `/calendar`, `/todos`, `/review` (`PageSkeleton` with header placeholder, `SkeletonBlock`), `(app)/error.tsx` (client, `retry`, 44px button on phones); `ReviewPage` shared by both review routes renders `PageHeader` first and `ReviewView` behind `<Suspense>` with a review skeleton. (M4) `NewItemBody.tsx` (forms, repeat controls, rrule, Zod schemas) loads via `next/dynamic` (`ssr: false`) and is preloaded 2 s after mount (`setTimeout`, Safari lacks `requestIdleCallback`); on Settings the rrule chunk arrived at ~2.2 s after a 0.2 s page load; title still gets focus on open. Event details dialog left eager (small). Low fixes: `sendNotification` `timeout: 10_000`; seed requires `DEMO_SEED_HOST` to equal the `DATABASE_URL` host (set in `.env` to the development pooled host, confirmed via Neon; in `.env.example` and project overview). Tidy-ups: removed `isPastDay`, `weekRange` (coding standards updated) and six unused input types (`ComingSoon.tsx`/`ReviewNotifySetting.tsx` were already gone); `src/actions/event-occurrences.ts` + `src/lib/event-actions.ts` (`EVENT_NOT_FOUND`, `revalidateEvents`, `resolveEvent`, `server-only`), occurrences reuse exported `EVENT_SELECT`, tests split (`event-occurrences.test.ts`); `TaskRow` 250 → 148 lines with `TaskTags.tsx`, `RenameInput.tsx` and `useScopedChange` (`src/hooks/use-scoped-change.ts`, owns `TaskRowActions`); `ColorPicker.tsx`, `AllDayEvent.tsx`, `MonthEventChip.tsx`, `calendar/event-button.ts`; `src/lib/event-colors.ts` (solid/soft/ring maps); `components/auth/text-link.ts`; `SMALL_INPUT` derived from `ITEM_INPUT_CLASS` via `cn` (tailwind-merge); `SegmentedControl` gained `value: T | null`, `size`, `className` and replaces the Appearance toggle (40px on phones now); calendar grid sets `--hour` from `HOUR_HEIGHT`; `formatWeekdayLong` and `formatWeekday` replace `.split(",")` on To-dos; `OpenEarlierCard` no longer `"use client"`; Today's `useCurrentMinute` moved into `LiveNowCard`/`LiveScheduleCard` so task lists don't re-render each minute (row memo not needed). Left for later: "7:00 PM" wording, `timezone` `input: false`, unused `updateReviewNotify`, `useTaskList` catch, month view tap targets, `task-actions.ts` `server-only`, whole-series exception loads, repeated review loads, serial Settings awaits. 759 tests. Verified on a production build with the demo user (1280px, 375px): Appearance toggle, New dialog focus/colour picker/custom repeat panel, week and month grids aligned, review header + streamed skeleton, To-dos weekday names, repeating-task delete prompt (cancelled), skeleton fallbacks in all four pages' HTML, no overflow or console errors. Error page and skeleton visuals not browser-checked (prefetching made navigations instant).
