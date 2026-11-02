@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { invalid, NOT_SIGNED_IN } from "@/lib/action-helpers";
 import { addDays, resolveTimezone, toDbDate, wallTimeToInstant } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { NOT_AN_OCCURRENCE, planEventDelete, planEventEdit, type EventPlan } from "@/lib/recurrence-edit";
@@ -17,26 +17,15 @@ import {
 } from "@/lib/validations/events";
 import { editScopeSchema } from "@/lib/validations/repeat";
 import type { Prisma } from "@/generated/prisma/client";
-import type { ActionResult } from "@/types/actions";
+import type { ActionResult, Failure } from "@/types/actions";
 
-const NOT_SIGNED_IN = "You're signed out. Sign in and try again.";
 const NOT_FOUND = "That event doesn't exist or was deleted.";
 
-type Failure = Extract<ActionResult<never>, { success: false }>;
 type Times = { startAt: Date; endAt: Date };
 
 function revalidateEvents() {
   revalidatePath("/today");
   revalidatePath("/calendar");
-}
-
-function invalid(error: z.ZodError): Failure {
-  const { fieldErrors } = z.flattenError(error);
-  return {
-    success: false,
-    error: error.issues[0].message,
-    fieldErrors: fieldErrors as Record<string, string[]>,
-  };
 }
 
 // All-day events are stored as UTC dates (see the Event model); timed ones as instants of the

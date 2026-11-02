@@ -1,0 +1,202 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/session", () => ({ getCurrentUserId: vi.fn() }));
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    task: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
+    taskCompletion: { upsert: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() },
+    taskException: { findMany: vi.fn() },
+    $transaction: vi.fn(),
+  },
+}));
+
+const { getCurrentUserId } = await import("@/lib/session");
+const { prisma } = await import("@/lib/prisma");
+const { completeTask, saveCompletionDetails, uncompleteTask } = await import("./task-completions");
+
+const task = vi.mocked(prisma.task);
+const completion = vi.mocked(prisma.taskCompletion);
+
+const day = (value: string) => new Date(`${value}T00:00:00Z`);
+const DAILY_TASK = { id: "task-1", title: "Pay bill", scope: "DAILY" as const, date: day("2026-10-28"), rrule: null };
+const WEEKLY_TASK = { id: "task-2", title: "Long run", scope: "WEEKLY" as const, date: day("2026-10-26"), rrule: null };
+// Every weekday from Monday, Oct 26.
+const REPEATING_TASK = { ...DAILY_TASK, id: "task-3", date: day("2026-10-26"), rrule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR" };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-30T15:00:00Z"));
+  vi.mocked(getCurrentUserId).mockResolvedValue("user-1");
+  task.findFirst.mockResolvedValue(DAILY_TASK as never);
+  task.create.mockResolvedValue({ id: "task-new" } as never);
+  task.deleteMany.mockResolvedValue({ count: 1 });
+  completion.upsert.mockResolvedValue({ minutesSpent: null, workNote: null } as never);
+  completion.deleteMany.mockResolvedValue({ count: 1 });
+  vi.mocked(prisma.$transaction).mockResolvedValue([] as never);
+  vi.mocked(prisma.taskException.findMany).mockResolvedValue([]);
+});
+
+describe("completeTask", () => {
+  it("records a completion for the task's day, now", async () => {
+    const result = await completeTask("task-1", "2026-10-28");
+
+    expect(result).toEqual({ success: true, data: { taskId: "task-1" } });
+    expect(completion.upsert).toHaveBeenCalledWith({
+      where: { taskId_occurrenceDate: { taskId: "task-1", occurrenceDate: day("2026-10-28") } },
+      create: {
+        taskId: "task-1",
+        occurrenceDate: day("2026-10-28"),
+        completedAt: new Date("2026-10-30T15:00:00Z"),
+      },
+      update: {},
+    });
+  });
+
+  it("stores a weekly completion against the week's Monday", async () => {
+    task.findFirst.mockResolvedValue(WEEKLY_TASK as never);
+
+    await completeTask("task-2", "2026-10-30");
+
+    expect(completion.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ occurrenceDate: day("2026-10-26") }),
+      }),
+    );
+  });
+
+  it("rejects a day the task isn't planned for", async () => {
+    const result = await completeTask("task-1", "2026-10-29");
+
+    expect(result).toEqual({ success: false, error: "That task isn't planned for that date." });
+    expect(completion.upsert).not.toHaveBeenCalled();
+  });
+
+  it("ticks one occurrence of a repeating task", async () => {
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+
+    const result = await completeTask("task-3", "2026-10-29");
+
+    expect(result.success).toBe(true);
+    expect(prisma.taskException.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { taskId: "task-3", occurrenceDate: day("2026-10-29") } }),
+    );
+    expect(completion.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { taskId_occurrenceDate: { taskId: "task-3", occurrenceDate: day("2026-10-29") } },
+      }),
+    );
+  });
+
+  it("rejects a day a repeating task skips, or one before it starts", async () => {
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+
+    expect((await completeTask("task-3", "2026-10-31")).success).toBe(false);
+    expect((await completeTask("task-3", "2026-10-23")).success).toBe(false);
+    expect(completion.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cancelled occurrence", async () => {
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+    vi.mocked(prisma.taskException.findMany).mockResolvedValue([
+      { occurrenceDate: day("2026-10-29"), cancelled: true, title: null, date: null },
+    ] as never);
+
+    const result = await completeTask("task-3", "2026-10-29");
+
+    expect(result).toEqual({ success: false, error: "That task isn't planned for that date." });
+    expect(completion.upsert).not.toHaveBeenCalled();
+  });
+
+  it("returns not found for another user's task", async () => {
+    task.findFirst.mockResolvedValue(null);
+
+    const result = await completeTask("someone-elses", "2026-10-28");
+
+    expect(result.success).toBe(false);
+    expect(task.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "someone-elses", userId: "user-1" } }),
+    );
+    expect(completion.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed date", async () => {
+    const result = await completeTask("task-1", "28/10/2026");
+
+    expect(result.success).toBe(false);
+    expect(task.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe("uncompleteTask", () => {
+  it("deletes the completion for that occurrence", async () => {
+    const result = await uncompleteTask("task-1", "2026-10-28");
+
+    expect(result.success).toBe(true);
+    expect(completion.deleteMany).toHaveBeenCalledWith({
+      where: { taskId: "task-1", occurrenceDate: day("2026-10-28") },
+    });
+  });
+
+  it("returns not found for another user's task", async () => {
+    task.findFirst.mockResolvedValue(null);
+
+    expect((await uncompleteTask("someone-elses", "2026-10-28")).success).toBe(false);
+    expect(completion.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveCompletionDetails", () => {
+  it.each([0, 1440])("accepts %i minutes", async (minutesSpent) => {
+    const result = await saveCompletionDetails("task-1", "2026-10-28", { minutesSpent });
+
+    expect(result.success).toBe(true);
+    expect(completion.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ update: { minutesSpent } }),
+    );
+  });
+
+  it.each([-1, 1441, 12.5, "30"])("rejects %j minutes", async (minutesSpent) => {
+    const result = await saveCompletionDetails("task-1", "2026-10-28", { minutesSpent });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.fieldErrors).toHaveProperty("minutesSpent");
+    expect(completion.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a note over 500 characters", async () => {
+    const result = await saveCompletionDetails("task-1", "2026-10-28", {
+      workNote: "x".repeat(501),
+    });
+
+    expect(result.success).toBe(false);
+    expect(completion.upsert).not.toHaveBeenCalled();
+  });
+
+  it("ticks the task if it wasn't done yet, with the details", async () => {
+    await saveCompletionDetails("task-1", "2026-10-28", { minutesSpent: 30, workNote: " Done " });
+
+    expect(completion.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: {
+          taskId: "task-1",
+          occurrenceDate: day("2026-10-28"),
+          completedAt: new Date("2026-10-30T15:00:00Z"),
+          minutesSpent: 30,
+          workNote: "Done",
+        },
+        update: { minutesSpent: 30, workNote: "Done" },
+      }),
+    );
+  });
+
+  it("returns not found for another user's task", async () => {
+    task.findFirst.mockResolvedValue(null);
+
+    const result = await saveCompletionDetails("someone-elses", "2026-10-28", { minutesSpent: 5 });
+
+    expect(result.success).toBe(false);
+    expect(completion.upsert).not.toHaveBeenCalled();
+  });
+});

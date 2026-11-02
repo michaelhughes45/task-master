@@ -1,12 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { NOT_SIGNED_IN } from "@/lib/action-helpers";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 import { reviewNotifySchema, timezoneSchema } from "@/lib/validations/settings";
 import type { ActionResult } from "@/types/actions";
-
-const NOT_SIGNED_IN = "You're signed out. Sign in and try again.";
 
 // The timezone changes "today" and the week on every page, so refresh them all.
 function revalidateApp() {

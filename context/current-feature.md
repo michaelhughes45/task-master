@@ -1,18 +1,33 @@
-# Current Feature
+# Current Feature: Code Scan Fixes
 
-<!-- Feature name and short description -->
+Fix the 1 Medium and 5 Low findings from the `code-scanner` pass (2026-11-02).
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- **(M1) Fewer repeated task queries per page:**
+  - Wrap the shared occurrence loads in React `cache()` so one request loads each scope/range once.
+  - Derive `getDayTasks`, `getOpenEarlier`, `getWeekDayCounts` and the sidebar's `getWeekProgress` from one weekly DAILY load (and one WEEKLY load) where the ranges allow it.
+  - Render the sidebar "This week" progress inside `<Suspense>` so it doesn't block page content.
+- **(L1) Shared action helpers:** move `NOT_SIGNED_IN`, the `Failure` type and `invalid()` out of `src/actions/tasks.ts`, `events.ts`, `push.ts` and `settings.ts` into one shared module, and use it in all four.
+- **(L2) Split `src/actions/tasks.ts`** (414 lines) into CRUD (`tasks.ts`), completions (`task-completions.ts`) and scoped occurrence edits (`task-occurrences.ts`). Share the DB exception mappers (`fromDbException`/`toDbException`) with `src/lib/db/tasks.ts` and `src/lib/db/review.ts`. Update imports and the co-located tests.
+- **(L3) Cron route:** send to users in small concurrent batches (`Promise.allSettled`, about 5 at a time) and set `maxDuration`, keeping the `{ users, sent, removed, failed }` response.
+- **(L4) Throttle `sendTestNotification`:** a per-user cooldown (about 30 s) with a friendly error, unit-tested.
+- **(L5) Security headers** in `next.config.ts`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` on all routes, and `Cache-Control: no-cache` on `/sw.js`.
+- **(L6) Bounded "moved in" completion lookup** in `src/lib/db/tasks.ts:106-117`: query by `taskId in [...]` plus an `occurrenceDate` range (or chunk) instead of one `OR` clause per occurrence.
+- Existing tests pass, new tests for the changed actions and utilities, `npm run lint` and `npm run build` pass; Today, To-dos, Calendar, Review and Settings still work in the browser (desktop and 375px).
 
 ## Notes
 
-<!-- Any extra notes -->
+- Findings come from a targeted scan (actions, `src/lib/db`, push, cron, proxy, config, `(app)` layout); components, pages and hooks weren't read. Verify each finding against the code before changing it, and drop any that don't hold up.
+- M1: skipping ended series in SQL would need a new `rruleUntil`-style column and migration. Out of scope unless agreed; it's a schema change.
+- L4: the cooldown needs somewhere to live that survives serverless instances (a `lastTestPushAt` column on `User` via `prisma migrate dev`, or a check on the newest sent time). Pick the smallest option and confirm if it needs a migration.
+- L5: check `node_modules/next/dist/docs/` for `headers()` in Next 16 with `cacheComponents` on before writing it. `X-Frame-Options: DENY` must not break the service worker or Google sign-in (both are top-level, so it shouldn't).
+- L3: one owner today, so this is about headroom, not a current failure.
+- Branch: `fix/code-scan`.
 
 ## History
 

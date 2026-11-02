@@ -110,7 +110,7 @@ describe("toTaskView", () => {
 });
 
 describe("queries", () => {
-  it("loads one-off tasks in the range and repeating series that started by its end", async () => {
+  it("loads the day's week: one-off tasks in it and repeating series that started by its end", async () => {
     await getDayTasks("user-1", "2026-10-28", NY);
 
     const args = findMany.mock.calls[0][0];
@@ -118,13 +118,13 @@ describe("queries", () => {
       userId: "user-1",
       scope: "DAILY",
       OR: [
-        { rrule: null, date: { gte: day("2026-10-28"), lte: day("2026-10-28") } },
-        { rrule: { not: null }, date: { lte: day("2026-10-28") } },
+        { rrule: null, date: { gte: day("2026-10-26"), lte: day("2026-11-01") } },
+        { rrule: { not: null }, date: { lte: day("2026-11-01") } },
       ],
     });
     // Completions only for the range, so a long series doesn't load its whole history.
     expect(args?.select?.completions).toMatchObject({
-      where: { occurrenceDate: { gte: day("2026-10-28"), lte: day("2026-10-28") } },
+      where: { occurrenceDate: { gte: day("2026-10-26"), lte: day("2026-11-01") } },
     });
   });
 
@@ -182,20 +182,53 @@ describe("queries", () => {
   });
 
   it("loads the completion of an occurrence moved in from outside the range", async () => {
+    // Daily from Monday, Oct 19; last Friday's occurrence moved to this Friday.
     findMany.mockResolvedValue([
-      { ...READ, exceptions: [{ occurrenceDate: day("2026-10-27"), cancelled: false, title: null, date: day("2026-10-30") }] },
+      {
+        ...READ,
+        date: day("2026-10-19"),
+        exceptions: [{ occurrenceDate: day("2026-10-23"), cancelled: false, title: null, date: day("2026-10-30") }],
+      },
     ] as never);
-    findCompletions.mockResolvedValue([{ taskId: "read", ...done("2026-10-27", "2026-10-30T14:00:00Z", 30) }] as never);
+    findCompletions.mockResolvedValue([{ taskId: "read", ...done("2026-10-23", "2026-10-30T14:00:00Z", 30) }] as never);
 
     const tasks = await getDayTasks("user-1", "2026-10-30", NY);
 
     expect(findCompletions.mock.calls[0][0]?.where).toEqual({
-      OR: [{ taskId: "read", occurrenceDate: day("2026-10-27") }],
+      taskId: { in: ["read"] },
+      occurrenceDate: { in: [day("2026-10-23")] },
     });
     expect(tasks.map((t) => [t.occurrenceDate, t.done, t.minutesSpent])).toEqual([
-      ["2026-10-27", true, 30],
+      ["2026-10-23", true, 30],
       ["2026-10-30", false, null],
     ]);
+  });
+
+  it("looks up moved-in completions with one fixed-size query, however many were moved", async () => {
+    const moved = ["2026-10-19", "2026-10-20", "2026-10-21"].map((from) => ({
+      occurrenceDate: day(from),
+      cancelled: false,
+      title: null,
+      date: day("2026-10-30"),
+    }));
+    findMany.mockResolvedValue([
+      { ...READ, date: day("2026-10-19"), exceptions: moved },
+      { ...READ, id: "stretch", date: day("2026-10-19"), exceptions: moved.slice(0, 1) },
+    ] as never);
+    // A completion that matches the lists but wasn't moved in (Stretch's Oct 20) is ignored.
+    findCompletions.mockResolvedValue([
+      { taskId: "read", ...done("2026-10-20", "2026-10-30T14:00:00Z") },
+      { taskId: "stretch", ...done("2026-10-20", "2026-10-20T14:00:00Z") },
+    ] as never);
+
+    const tasks = await getDayTasks("user-1", "2026-10-30", NY);
+
+    expect(findCompletions).toHaveBeenCalledTimes(1);
+    expect(findCompletions.mock.calls[0][0]?.where).toEqual({
+      taskId: { in: ["read", "stretch"] },
+      occurrenceDate: { in: [day("2026-10-19"), day("2026-10-20"), day("2026-10-21")] },
+    });
+    expect(tasks.filter((t) => t.done).map((t) => `${t.id} ${t.occurrenceDate}`)).toEqual(["read 2026-10-20"]);
   });
 
   it("orders by day, keeping the query's order within a day", async () => {
@@ -242,9 +275,10 @@ describe("queries", () => {
 
     const tasks = await getOpenEarlier("user-1", "2026-10-30", NY);
 
+    // Loads the whole week (shared with the day and sidebar queries), then keeps earlier days.
     expect(findMany.mock.calls[0][0]?.where?.OR).toContainEqual({
       rrule: null,
-      date: { gte: day("2026-10-26"), lte: day("2026-10-29") },
+      date: { gte: day("2026-10-26"), lte: day("2026-11-01") },
     });
     expect(tasks.map((t) => [t.day, t.done])).toEqual([
       ["2026-10-27", true],

@@ -1,9 +1,18 @@
 import { isCronAuthorized } from "@/lib/cron-auth";
 import { getWeeklyReview } from "@/lib/db/review";
 import { env } from "@/lib/env";
-import { REVIEW_NOTIFICATION_TITLE, reviewNotices, reviewNotificationBody } from "@/lib/notify-schedule";
+import {
+  REVIEW_NOTIFICATION_TITLE,
+  reviewNotices,
+  reviewNotificationBody,
+  type ReviewNotice,
+} from "@/lib/notify-schedule";
 import { prisma } from "@/lib/prisma";
-import { sendPush, type SendSummary } from "@/lib/push";
+import { sendPush, type SendSummary, type StoredSubscription } from "@/lib/push";
+
+// Users are sent to a few at a time, so many users don't run past the time limit one by one.
+const BATCH_SIZE = 5;
+export const maxDuration = 60;
 
 // Outside production, `?now=<ISO instant>` fakes the clock so another week's run can be tested.
 function runTime(request: Request) {
@@ -31,23 +40,35 @@ export async function GET(request: Request) {
     },
   });
 
+  const notices = reviewNotices(users, now);
   const summary: SendSummary & { users: number } = { users: 0, sent: 0, removed: 0, failed: 0 };
-  for (const { user, tz, weekStart } of reviewNotices(users, now)) {
-    try {
-      const review = await getWeeklyReview(user.id, weekStart, tz, now);
-      const result = await sendPush(user.pushSubscriptions, {
-        title: REVIEW_NOTIFICATION_TITLE,
-        body: reviewNotificationBody(review.totals),
-        url: `/review/${weekStart}`,
-      });
+  for (let i = 0; i < notices.length; i += BATCH_SIZE) {
+    const batch = notices.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(batch.map((notice) => notify(notice, now)));
+    results.forEach((result, j) => {
+      if (result.status === "rejected") {
+        const { user } = batch[j];
+        console.error(`Review notification for user ${user.id} failed`, result.reason);
+        summary.failed += user.pushSubscriptions.length;
+        return;
+      }
       summary.users += 1;
-      summary.sent += result.sent;
-      summary.removed += result.removed;
-      summary.failed += result.failed;
-    } catch (err) {
-      console.error(`Review notification for user ${user.id} failed`, err);
-      summary.failed += user.pushSubscriptions.length;
-    }
+      summary.sent += result.value.sent;
+      summary.removed += result.value.removed;
+      summary.failed += result.value.failed;
+    });
   }
   return Response.json(summary);
+}
+
+async function notify(
+  { user, tz, weekStart }: ReviewNotice<{ id: string; pushSubscriptions: StoredSubscription[] }>,
+  now: Date,
+) {
+  const review = await getWeeklyReview(user.id, weekStart, tz, now);
+  return sendPush(user.pushSubscriptions, {
+    title: REVIEW_NOTIFICATION_TITLE,
+    body: reviewNotificationBody(review.totals),
+    url: `/review/${weekStart}`,
+  });
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import {
   addDays,
   dayEndInstant,
@@ -12,6 +13,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { expandTask, type TaskOccurrence } from "@/lib/recurrence";
 import { describeRRule } from "@/lib/rrule-builder";
+import { fromDbException, TASK_EXCEPTION_SELECT } from "@/lib/task-exceptions";
 import type { Prisma } from "@/generated/prisma/client";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { DayCount, TaskView } from "@/types/tasks";
@@ -33,7 +35,7 @@ function taskSelect(first: Date, last: Date) {
     priority: true,
     date: true,
     rrule: true,
-    exceptions: { select: { occurrenceDate: true, cancelled: true, title: true, date: true } },
+    exceptions: { select: TASK_EXCEPTION_SELECT },
     completions: { where: { occurrenceDate: { gte: first, lte: last } }, select: COMPLETION_SELECT },
   } satisfies Prisma.TaskSelect;
 }
@@ -76,12 +78,7 @@ export function toTaskView(
 }
 
 function expandRow(task: TaskRow, firstDay: DateStr, lastDay: DateStr) {
-  const exceptions = task.exceptions.map((e) => ({
-    ...e,
-    occurrenceDate: fromDbDate(e.occurrenceDate),
-    date: e.date && fromDbDate(e.date),
-  }));
-  return expandTask({ ...task, date: fromDbDate(task.date) }, exceptions, firstDay, lastDay);
+  return expandTask({ ...task, date: fromDbDate(task.date) }, task.exceptions.map(fromDbException), firstDay, lastDay);
 }
 
 const completionKey = (taskId: string, occurrenceDate: DateStr) => `${taskId}|${occurrenceDate}`;
@@ -113,12 +110,14 @@ export async function findOccurrences(
   const completions = new Map(
     tasks.flatMap((task) => task.completions.map((c) => [completionKey(task.id, fromDbDate(c.occurrenceDate)), c])),
   );
-  // An occurrence moved in from outside the range has its completion outside it too.
+  // An occurrence moved in from outside the range has its completion outside it too. Two `in`
+  // lists keep the query a fixed size; pairs that weren't moved in are never looked up.
   const movedIn = found.filter(({ occurrence }) => occurrence.occurrenceDate < firstDay || occurrence.occurrenceDate > lastDay);
   if (movedIn.length > 0) {
     const extra = await prisma.taskCompletion.findMany({
       where: {
-        OR: movedIn.map(({ task, occurrence }) => ({ taskId: task.id, occurrenceDate: toDbDate(occurrence.occurrenceDate) })),
+        taskId: { in: [...new Set(movedIn.map(({ task }) => task.id))] },
+        occurrenceDate: { in: [...new Set(movedIn.map(({ occurrence }) => occurrence.occurrenceDate))].map(toDbDate) },
       },
       select: { taskId: true, ...COMPLETION_SELECT },
     });
@@ -139,8 +138,16 @@ function toViews(occurrences: Occurrence[], tz: string) {
   return occurrences.map(({ task, occurrence, completion }) => toTaskView(task, occurrence, completion, tz));
 }
 
+// The day, earlier-days and week-count queries below, and the sidebar's progress, all read the
+// same week. Cached per request, so a page and its layout load each scope's week only once.
+const dailyWeek = cache((userId: string, monday: DateStr) =>
+  findOccurrences(userId, "DAILY", monday, addDays(monday, 6)),
+);
+const weeklyWeek = cache((userId: string, monday: DateStr) => findOccurrences(userId, "WEEKLY", monday, monday));
+
 export async function getDayTasks(userId: string, day: DateStr, tz: string): Promise<TaskView[]> {
-  return toViews(await findOccurrences(userId, "DAILY", day, day), tz);
+  const occurrences = await dailyWeek(userId, weekStartOf(day));
+  return toViews(occurrences.filter(({ occurrence }) => occurrence.date === day), tz);
 }
 
 export async function getWeekTasks(
@@ -148,13 +155,12 @@ export async function getWeekTasks(
   weekStart: DateStr,
   tz: string,
 ): Promise<TaskView[]> {
-  const monday = weekStartOf(weekStart);
-  return toViews(await findOccurrences(userId, "WEEKLY", monday, monday), tz);
+  return toViews(await weeklyWeek(userId, weekStartOf(weekStart)), tz);
 }
 
 export async function getWeekDayCounts(userId: string, weekStart: DateStr): Promise<DayCount[]> {
   const monday = weekStartOf(weekStart);
-  const occurrences = await findOccurrences(userId, "DAILY", monday, addDays(monday, 6));
+  const occurrences = await dailyWeek(userId, monday);
 
   return weekDays(monday).map((day) => {
     const onDay = occurrences.filter(({ occurrence }) => occurrence.date === day);
@@ -175,11 +181,12 @@ export async function getOpenEarlier(
 
   const todayStart = dayStartInstant(today, tz);
   const todayEnd = dayEndInstant(today, tz);
-  const occurrences = await findOccurrences(userId, "DAILY", monday, addDays(today, -1));
+  const occurrences = await dailyWeek(userId, monday);
   return toViews(
     occurrences.filter(
-      ({ completion }) =>
-        completion === undefined || (completion.completedAt >= todayStart && completion.completedAt < todayEnd),
+      ({ occurrence, completion }) =>
+        occurrence.date < today &&
+        (completion === undefined || (completion.completedAt >= todayStart && completion.completedAt < todayEnd)),
     ),
     tz,
   );

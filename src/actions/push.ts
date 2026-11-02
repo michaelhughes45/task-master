@@ -1,15 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { NOT_SIGNED_IN } from "@/lib/action-helpers";
 import { prisma } from "@/lib/prisma";
 import { sendPush, type SendSummary } from "@/lib/push";
 import { getCurrentUserId } from "@/lib/session";
 import { pushEndpointSchema, pushSubscriptionSchema } from "@/lib/validations/push";
 import type { ActionResult } from "@/types/actions";
 
-const NOT_SIGNED_IN = "You're signed out. Sign in and try again.";
-
 const SUBSCRIPTION_SELECT = { id: true, endpoint: true, p256dh: true, auth: true } as const;
+
+// Time between test notifications, so the button can't be used to flood the user's devices.
+const TEST_PUSH_COOLDOWN_MS = 30_000;
 
 // Turning the reminder on from this device: store its subscription and switch the reminder on.
 // Upserting by endpoint also moves a browser's subscription to whoever is signed in now.
@@ -72,6 +74,16 @@ export async function sendTestNotification(): Promise<ActionResult<SendSummary>>
     if (subscriptions.length === 0) {
       return { success: false, error: "Turn on the reminder on this device first." };
     }
+    // Claims the send in one conditional update, so two quick clicks can't both get through.
+    const now = new Date();
+    const { count } = await prisma.user.updateMany({
+      where: {
+        id: userId,
+        OR: [{ lastTestPushAt: null }, { lastTestPushAt: { lte: new Date(now.getTime() - TEST_PUSH_COOLDOWN_MS) } }],
+      },
+      data: { lastTestPushAt: now },
+    });
+    if (count === 0) return { success: false, error: "A test was just sent. Wait 30 seconds and try again." };
     const summary = await sendPush(subscriptions, {
       title: "Notifications are on",
       body: "Your weekly review will arrive here on Sundays at 7:00 PM.",

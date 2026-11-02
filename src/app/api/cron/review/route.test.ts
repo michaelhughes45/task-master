@@ -114,6 +114,27 @@ describe("GET /api/cron/review selection", () => {
     expect(await response.json()).toEqual({ users: 1, sent: 1, removed: 0, failed: 2 });
   });
 
+  it("sends to users a few at a time, reaching every one", async () => {
+    findMany.mockResolvedValue(
+      Array.from({ length: 12 }, (_, i) => ({ id: `u${i}`, timezone: "America/Denver", pushSubscriptions: [sub(`u${i}`)] })) as never,
+    );
+    let running = 0;
+    let most = 0;
+    vi.mocked(getWeeklyReview).mockImplementation(async () => {
+      running += 1;
+      most = Math.max(most, running);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      running -= 1;
+      return { totals: { planned: 1, done: 1 } } as never;
+    });
+    vi.mocked(sendPush).mockResolvedValue({ sent: 1, removed: 0, failed: 0 });
+
+    const response = await GET(request());
+
+    expect(await response.json()).toEqual({ users: 12, sent: 12, removed: 0, failed: 0 });
+    expect(most).toBe(5);
+  });
+
   it("ignores a faked time in production", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     // Wednesday Nov 4: the latest ready week is still Oct 26

@@ -7,7 +7,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
     pushSubscription: { upsert: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn() },
-    user: { update: vi.fn() },
+    user: { update: vi.fn(), updateMany: vi.fn() },
   },
 }));
 
@@ -26,6 +26,7 @@ const deleteMany = vi.mocked(prisma.pushSubscription.deleteMany);
 const findMany = vi.mocked(prisma.pushSubscription.findMany);
 const updateUser = vi.mocked(prisma.user.update);
 const transaction = vi.mocked(prisma.$transaction);
+const claimTestPush = vi.mocked(prisma.user.updateMany);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,6 +38,7 @@ beforeEach(() => {
   transaction.mockResolvedValue([] as never);
   findMany.mockResolvedValue([STORED] as never);
   vi.mocked(sendPush).mockResolvedValue({ sent: 1, removed: 0, failed: 0 });
+  claimTestPush.mockResolvedValue({ count: 1 });
 });
 
 describe("saveSubscription", () => {
@@ -134,6 +136,34 @@ describe("sendTestNotification", () => {
     const result = await sendTestNotification();
 
     expect(result).toEqual({ success: false, error: "Turn on the reminder on this device first." });
+    expect(sendPush).not.toHaveBeenCalled();
+    expect(claimTestPush).not.toHaveBeenCalled();
+  });
+
+  it("claims the send only when the last test was 30 seconds ago or more", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-02T18:00:00.000Z"));
+    try {
+      await sendTestNotification();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(claimTestPush).toHaveBeenCalledWith({
+      where: {
+        id: "user-1",
+        OR: [{ lastTestPushAt: null }, { lastTestPushAt: { lte: new Date("2026-11-02T17:59:30.000Z") } }],
+      },
+      data: { lastTestPushAt: new Date("2026-11-02T18:00:00.000Z") },
+    });
+  });
+
+  it("refuses a second test within the cooldown without sending", async () => {
+    claimTestPush.mockResolvedValue({ count: 0 });
+
+    const result = await sendTestNotification();
+
+    expect(result).toEqual({ success: false, error: "A test was just sent. Wait 30 seconds and try again." });
     expect(sendPush).not.toHaveBeenCalled();
   });
 

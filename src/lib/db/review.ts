@@ -4,6 +4,7 @@ import { findOccurrences } from "@/lib/db/tasks";
 import { prisma } from "@/lib/prisma";
 import { expandTask } from "@/lib/recurrence";
 import { computeWeeklyReview } from "@/lib/review";
+import { fromDbException, TASK_EXCEPTION_SELECT } from "@/lib/task-exceptions";
 import type { DateStr, TaskScope } from "@/types/dates";
 import type { ReviewOccurrence, WeeklyReview } from "@/types/review";
 
@@ -73,7 +74,7 @@ export async function getReviewWeeks(userId: string, tz: string, now: Date = new
         date: true,
         rrule: true,
         title: true,
-        exceptions: { select: { occurrenceDate: true, cancelled: true, title: true, date: true } },
+        exceptions: { select: TASK_EXCEPTION_SELECT },
       },
     }),
   ]);
@@ -83,12 +84,7 @@ export async function getReviewWeeks(userId: string, tz: string, now: Date = new
   for (const task of series) {
     const date = fromDbDate(task.date);
     const from = known.length >= REVIEW_WEEKS && known[REVIEW_WEEKS - 1] > date ? known[REVIEW_WEEKS - 1] : date;
-    const exceptions = task.exceptions.map((e) => ({
-      ...e,
-      occurrenceDate: fromDbDate(e.occurrenceDate),
-      date: e.date && fromDbDate(e.date),
-    }));
-    for (const occurrence of expandTask({ ...task, date }, exceptions, from, lastDay)) {
+    for (const occurrence of expandTask({ ...task, date }, task.exceptions.map(fromDbException), from, lastDay)) {
       weeks.add(weekStartOf(occurrence.date));
     }
   }

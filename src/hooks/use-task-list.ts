@@ -2,16 +2,9 @@
 
 import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
-import {
-  completeTask,
-  createTask,
-  deleteTask,
-  deleteTaskOccurrence,
-  saveCompletionDetails,
-  uncompleteTask,
-  updateTask,
-  updateTaskOccurrence,
-} from "@/actions/tasks";
+import { completeTask, saveCompletionDetails, uncompleteTask } from "@/actions/task-completions";
+import { deleteTaskOccurrence, updateTaskOccurrence } from "@/actions/task-occurrences";
+import { createTask, deleteTask, updateTask } from "@/actions/tasks";
 import type { EditScope } from "@/lib/recurrence-edit";
 import { applyTaskChange, draftTask, taskKey, type TaskListChange } from "@/lib/task-list";
 import type { TaskOccurrenceEditInput } from "@/lib/validations/tasks";
