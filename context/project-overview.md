@@ -414,6 +414,7 @@ vercel.json           # weekly review cron
 # Database
 DATABASE_URL=          # Neon pooled connection (app)
 DIRECT_URL=            # Neon direct connection (Prisma CLI)
+DEMO_SEED_HOST=        # host of the development DATABASE_URL; the seed refuses any other
 
 # App
 APP_URL=http://localhost:3000

@@ -1,5 +1,3 @@
-"use client";
-
 import { TaskListCard } from "@/components/todos/TaskListCard";
 import type { TaskListHandlers } from "@/hooks/use-task-list";
 import type { DateStr } from "@/types/dates";

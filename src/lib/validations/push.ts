@@ -21,6 +21,9 @@ export function isPushServiceEndpoint(endpoint: string) {
   );
 }
 
+// Devices per user. Each one gets a request on every send, so the list can't grow without limit.
+export const MAX_SUBSCRIPTIONS = 10;
+
 // Push services hand out https endpoints; anything else is refused before it's stored.
 export const pushEndpointSchema = z.url({ protocol: /^https$/ }).max(2048);
 
@@ -32,5 +35,3 @@ export const pushSubscriptionSchema = z.object({
     auth: z.string().min(1).max(64),
   }),
 });
-
-export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;

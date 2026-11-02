@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { TEXT_LINK_CLASS } from "@/components/auth/text-link";
 import { authClient } from "@/lib/auth-client";
 import { VERIFY_EMAIL_CALLBACK_URL } from "@/lib/sign-in-notice";
+import { cn } from "@/lib/utils";
 
 // Shown under the "email not verified" sign-in error.
 export function ResendVerificationButton({ email }: { email: string }) {
@@ -38,7 +40,7 @@ export function ResendVerificationButton({ email }: { email: string }) {
       type="button"
       onClick={resend}
       disabled={isPending}
-      className="self-start rounded-sm text-sm font-medium text-primary-text hover:text-primary-ink focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:opacity-60"
+      className={cn(TEXT_LINK_CLASS, "self-start text-sm font-medium disabled:opacity-60")}
     >
       {isPending ? "Sending…" : "Resend link"}
     </button>

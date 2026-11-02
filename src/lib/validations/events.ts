@@ -17,8 +17,12 @@ function optionalText(max: number) {
 const time = z.string().refine(isWallTime, "Choose a valid time");
 
 export const eventIdSchema = z.string().min(1).max(64);
-// An occurrence's original start, as an ISO instant ("2026-10-28T13:00:00.000Z").
-export const occurrenceStartSchema = z.iso.datetime().transform((value) => new Date(value));
+// An occurrence's original start, as a UTC ISO instant ("2026-10-28T13:00:00.000Z"), on a day
+// `isDateStr` accepts, so finding it can't send rrule stepping centuries past the series' start.
+export const occurrenceStartSchema = z.iso
+  .datetime()
+  .refine((value) => isDateStr(value.slice(0, 10)), "Choose a valid date")
+  .transform((value) => new Date(value));
 
 // Timed events need both times on `date`, ending later the same day. All-day events ignore them.
 // For one occurrence of a repeating event: `date` is the occurrence's, not the series' start,

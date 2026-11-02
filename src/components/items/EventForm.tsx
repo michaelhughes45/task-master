@@ -1,7 +1,9 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { createEvent, updateEvent, updateEventOccurrence } from "@/actions/events";
+import { updateEventOccurrence } from "@/actions/event-occurrences";
+import { createEvent, updateEvent } from "@/actions/events";
+import { ColorPicker } from "@/components/items/ColorPicker";
 import { EditScopeDialog } from "@/components/items/EditScopeDialog";
 import { ITEM_INPUT_CLASS, ItemField, fieldA11y } from "@/components/items/ItemField";
 import { ItemFormFooter } from "@/components/items/ItemFormFooter";
@@ -14,17 +16,7 @@ import type { EditScope } from "@/lib/recurrence-edit";
 import { repeatRule, repeatStateFor } from "@/lib/rrule-builder";
 import { cn } from "@/lib/utils";
 import { eventSchema, occurrenceEventSchema, type EventInput } from "@/lib/validations/events";
-import type { EventColor, EventFormValues } from "@/types/events";
-
-const COLORS = [
-  { value: "BLUE", label: "Blue", swatch: "bg-primary", ring: "ring-primary" },
-  {
-    value: "GREEN",
-    label: "Green",
-    swatch: "bg-success",
-    ring: "ring-success",
-  },
-] as const;
+import type { EventFormValues } from "@/types/events";
 
 type Fields = Omit<EventFormValues, "title" | "rrule">;
 
@@ -208,33 +200,5 @@ export function EventForm({
         }}
       />
     </>
-  );
-}
-
-function ColorPicker({ value, onChange }: { value: EventColor; onChange: (color: EventColor) => void }) {
-  return (
-    <div role="group" aria-label="Color" className="flex items-center gap-1">
-      <span aria-hidden="true" className="mr-1.5 text-[13px] font-medium text-muted-foreground">
-        Color
-      </span>
-      {COLORS.map((color) => (
-        <button
-          key={color.value}
-          type="button"
-          aria-label={color.label}
-          aria-pressed={value === color.value}
-          onClick={() => onChange(color.value)}
-          className="flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <span
-            className={cn(
-              "size-7 rounded-full",
-              color.swatch,
-              value === color.value && cn("ring-2 ring-offset-2 ring-offset-popover", color.ring),
-            )}
-          />
-        </button>
-      ))}
-    </div>
   );
 }

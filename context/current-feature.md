@@ -1,18 +1,64 @@
-# Current Feature
+# Current Feature: Full Code Scan Fixes
 
-<!-- Feature name and short description -->
+Fix the 4 Medium findings and the Low tidy-ups from the full-project `code-scanner` pass (2026-11-02, three scans covering every source file).
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+### Medium
+
+- **M1. Far-future occurrence dates:** the event and task occurrence actions refuse occurrence dates/instants outside a sensible range (e.g. years 1900–2100, or a fixed horizon past the series start), so rrule can't be made to step to year 2999/9999 (`occurrenceStartSchema` in `src/lib/validations/events.ts`, `occurrenceDateSchema` in `src/lib/validations/tasks.ts`, `resolveOccurrence` / `resolveSeries`). Unit tests for the rejected dates.
+- **M2. Push subscription cap:** `saveSubscription` refuses new endpoints beyond a small per-user cap (e.g. 10); re-saving an existing endpoint still works. Unit tests.
+- **M3. Loading and error states:** `loading.tsx` for `/today`, `/calendar`, `/todos` and `/review`, an `error.tsx` for the `(app)` section, and the review page renders its header first with `ReviewView` inside `<Suspense>`.
+- **M4. Dialog code split:** the New item form contents (event/task forms, repeat controls, rrule) and the event details body load only when a dialog opens, not in every signed-in page's first-load bundle.
+
+### Low tidy-ups
+
+- Delete unused code: `src/components/ComingSoon.tsx`, `src/components/settings/ReviewNotifySetting.tsx`, `weekRange` and `isPastDay` in `src/lib/dates.ts` (with their tests) and exported types nothing imports.
+- Split large files:
+  - In `TaskRow.tsx`, move `TaskTags` and `RenameInput` into their own files and the scope-prompt logic into a hook.
+  - Move the occurrence code in `src/actions/events.ts` into `event-occurrences.ts`, sharing helpers through `src/lib/event-actions.ts`.
+  - Move `ColorPicker` out of `EventForm.tsx`.
+  - Split `AllDayEvent` and `MonthEventChip` out of `EventBlock.tsx`.
+- Remove duplicates:
+  - One shared event colour class map.
+  - The events action reuses the `db/events.ts` select shape.
+  - Shared native input class.
+  - Shared auth text-link class.
+  - `AppearanceSetting` reuses `SegmentedControl`.
+  - One shared review page shell for `/review` and `/review/[weekStart]`.
+- Small fixes:
+  - The calendar grid height and hour lines come from `HOUR_HEIGHT`.
+  - `todos/page.tsx` uses weekday formatters instead of `.split(",")`.
+  - Drop the `"use client"` that `OpenEarlierCard` doesn't need.
+- Today re-renders: the per-minute clock no longer re-renders every task row, by moving `useCurrentMinute` down to the schedule/now cards and memoizing rows where it helps.
+### Low fixes
+
+- **Push timeout:** `webpush.sendNotification` in `src/lib/push.ts` gets a `timeout` of about 10 s, so a stalled push service counts as failed instead of using up the cron's 60 s. Unit test that the option is passed.
+- **Seed guard:** `prisma/seed.ts` refuses to run unless it is clearly pointed at development, either with an explicit opt-in env var or an allowlisted dev database host, not only `NODE_ENV`.
+
+### Checks
+
+- `npm run lint`, `npm test` and `npm run build` pass. Verify in the browser at 1280px and 375px.
 
 ## Notes
 
-<!-- Any extra notes -->
+- Findings come from the full-project `code-scanner` pass. Check each one against the code before changing it.
+- Not in scope, so leave them for a later fix unless asked:
+  - "7:00 PM" wording in the test notification and `ReviewReminder`
+  - `timezone` `input: false`
+  - unused `updateReviewNotify` action
+  - `useTaskList` catch
+  - month view tap targets
+  - `task-actions.ts` `server-only`
+  - exceptions loaded for the whole series
+  - repeated review loads
+  - serial Settings awaits
+- Check the installed Next.js docs (`node_modules/next/dist/docs/`) for `loading.tsx`, `error.tsx`, `next/dynamic` and Cache Components rules before writing them. Pages use `instant = false`.
+- Refactors must not change behaviour. Existing tests should pass unchanged except where a deleted export's tests go too.
 
 ## History
 

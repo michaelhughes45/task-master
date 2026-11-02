@@ -5,7 +5,7 @@ import { NOT_SIGNED_IN } from "@/lib/action-helpers";
 import { prisma } from "@/lib/prisma";
 import { sendPush, type SendSummary } from "@/lib/push";
 import { getCurrentUserId } from "@/lib/session";
-import { pushEndpointSchema, pushSubscriptionSchema } from "@/lib/validations/push";
+import { MAX_SUBSCRIPTIONS, pushEndpointSchema, pushSubscriptionSchema } from "@/lib/validations/push";
 import type { ActionResult } from "@/types/actions";
 
 const SUBSCRIPTION_SELECT = { id: true, endpoint: true, p256dh: true, auth: true } as const;
@@ -24,6 +24,14 @@ export async function saveSubscription(input: unknown): Promise<ActionResult<nul
   const { endpoint, keys } = parsed.data;
 
   try {
+    // Re-saving a device the user already has is always allowed; only new ones count.
+    const others = await prisma.pushSubscription.count({ where: { userId, endpoint: { not: endpoint } } });
+    if (others >= MAX_SUBSCRIPTIONS) {
+      return {
+        success: false,
+        error: `Reminders are on for ${MAX_SUBSCRIPTIONS} devices already. Turn one off first.`,
+      };
+    }
     await prisma.$transaction([
       prisma.pushSubscription.upsert({
         where: { endpoint },

@@ -6,7 +6,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { DateStr } from "@/types/dates";
 import type { EventView } from "@/types/events";
 
-const EVENT_SELECT = {
+// Also used by the occurrence actions, which load one series the same way.
+export const EVENT_SELECT = {
   id: true,
   title: true,
   notes: true,

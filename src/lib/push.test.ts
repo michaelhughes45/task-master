@@ -52,6 +52,7 @@ describe("sendPush", () => {
       JSON.stringify(PAYLOAD),
       expect.objectContaining({
         vapidDetails: { publicKey: "public-key", privateKey: "private-key", subject: "mailto:test@example.com" },
+        timeout: 10_000,
       }),
     );
     expect(deleteMany).not.toHaveBeenCalled();

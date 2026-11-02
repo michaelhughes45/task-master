@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { ITEM_INPUT_CLASS } from "@/components/items/ItemField";
 import { weekStartOf } from "@/lib/dates";
 import {
   WEEKDAYS,
@@ -24,8 +25,8 @@ const UNITS: { value: RepeatFreq; unit: string }[] = [
   { value: "YEARLY", unit: "year" },
 ];
 
-const SMALL_INPUT =
-  "h-11 min-w-0 rounded-md border border-input bg-card px-2 text-base text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:text-sm dark:scheme-dark";
+// The item form's input, shorter and narrower, on the panel's card background.
+const SMALL_INPUT = cn(ITEM_INPUT_CLASS, "w-auto bg-card px-2 md:h-9 md:text-sm");
 const RADIO = "size-4 flex-none accent-primary";
 const RADIO_ROW = "flex min-h-11 flex-wrap items-center gap-2.5 md:min-h-9";
 

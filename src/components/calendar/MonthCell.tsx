@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MonthEventChip } from "@/components/calendar/EventBlock";
+import { MonthEventChip } from "@/components/calendar/MonthEventChip";
 import { calendarHref } from "@/lib/calendar-view";
 import { cn } from "@/lib/utils";
 import type { MonthDay } from "@/types/calendar";

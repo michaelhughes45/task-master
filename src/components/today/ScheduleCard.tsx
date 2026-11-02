@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { useItemDialogs } from "@/hooks/use-item-dialogs";
+import { EVENT_SOLID_CLASS } from "@/lib/event-colors";
 import { eventTiming, type ScheduleItem } from "@/lib/today";
 import { cn } from "@/lib/utils";
-import type { EventColor } from "@/types/events";
-
-const DOT_CLASS: Record<EventColor, string> = {
-  BLUE: "bg-primary",
-  GREEN: "bg-success",
-};
 
 interface ScheduleCardProps {
   items: ScheduleItem[];
@@ -71,7 +66,7 @@ function ScheduleRow({ item, timing }: { item: ScheduleItem; timing: ReturnType<
       </span>
       <span
         aria-hidden="true"
-        className={cn("size-2 flex-none rounded-full md:mt-[7px]", DOT_CLASS[item.color], past && "opacity-45")}
+        className={cn("size-2 flex-none rounded-full md:mt-[7px]", EVENT_SOLID_CLASS[item.color], past && "opacity-45")}
       />
       <span className="block min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

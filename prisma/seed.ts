@@ -283,8 +283,18 @@ function eventTimes(day: string, event: SeedEvent) {
   };
 }
 
-async function main() {
+// The seed creates a user with a published password, so it only runs against the database host
+// named in DEMO_SEED_HOST (the development branch). NODE_ENV alone isn't set by `prisma db seed`.
+function assertDevelopmentDatabase() {
   if (process.env.NODE_ENV === "production") throw new Error("The demo seed is for development only");
+  const allowed = process.env.DEMO_SEED_HOST;
+  if (!allowed) throw new Error("Set DEMO_SEED_HOST to the development database host to run the seed");
+  const host = new URL(process.env.DATABASE_URL ?? "").hostname;
+  if (host !== allowed) throw new Error(`Refusing to seed ${host}: DEMO_SEED_HOST is ${allowed}`);
+}
+
+async function main() {
+  assertDevelopmentDatabase();
   const now = new Date();
   const today = todayIn(DEMO_USER_TIMEZONE, now);
   const monday = weekStartOf(today);

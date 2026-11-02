@@ -55,7 +55,7 @@ These are the easiest places to introduce bugs in this app. Follow them strictly
 - **Prisma returns `@db.Date` as a `Date` at UTC midnight.** Convert at the database boundary with `toDbDate` / `fromDbDate` only. Never `format()` such a value in a local or user timezone; anywhere behind UTC it shows the previous day.
 - **All-day events are the one exception:** `Event.startAt` / `endAt` hold the date at 00:00 UTC. Read them back as UTC dates (`fromDbDate`), never in the user's timezone.
 - **Every "today", "this week" or day boundary is computed in the user's timezone** (`user.timezone`, via `resolveTimezone`), never the server's. Vercel runs in UTC.
-- **Weeks run Monday–Sunday.** Use the shared helpers in `src/lib/dates.ts` (`todayIn`, `weekStartOf`, `weekRange`, `dayStartInstant`, etc.); don't call `startOfWeek` with ad-hoc options elsewhere.
+- **Weeks run Monday–Sunday.** Use the shared helpers in `src/lib/dates.ts` (`todayIn`, `weekStartOf`, `weekDays`, `dayStartInstant`, `dayEndInstant`, etc.); don't call `startOfWeek` with ad-hoc options elsewhere.
 - Use `date-fns` and `@date-fns/tz` for date math. Never add `24 * 60 * 60 * 1000` to move a day (breaks across daylight saving changes).
 - Never use `new Date('YYYY-MM-DD')` (parses as UTC midnight) or `toLocaleString()` / `format()` without the user's timezone. Use `parseDateParam` and the formatters in `dates.ts`.
 - Format dates and times on the server in the user's timezone and pass strings to client components. Formatting a `Date` in the browser uses the device timezone and can cause hydration mismatches.

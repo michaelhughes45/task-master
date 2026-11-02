@@ -1,4 +1,4 @@
-import { AllDayEvent } from "@/components/calendar/EventBlock";
+import { AllDayEvent } from "@/components/calendar/AllDayEvent";
 import { cn } from "@/lib/utils";
 import type { CalendarColumn } from "@/types/calendar";
 

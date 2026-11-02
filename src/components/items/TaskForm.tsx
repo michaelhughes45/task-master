@@ -72,6 +72,7 @@ export function TaskForm({ title, onTitleChange, titleRef, defaultDate, onCancel
         <div className="flex flex-col gap-1.5">
           <span className="text-[13px] font-medium text-muted-foreground">List</span>
           <SegmentedControl
+            className="self-start"
             label="List"
             options={SCOPES}
             value={scope}

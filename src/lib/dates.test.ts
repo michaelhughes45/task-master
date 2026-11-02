@@ -10,6 +10,7 @@ import {
   formatDayMedium,
   formatDayShort,
   formatWeekday,
+  formatWeekdayLong,
   formatMinutes,
   formatMonth,
   formatTime,
@@ -20,7 +21,6 @@ import {
   isBefore,
   isDateStr,
   isDoneLate,
-  isPastDay,
   isWallTime,
   monthGridRange,
   parseDateParam,
@@ -29,7 +29,6 @@ import {
   toDbDate,
   wallTimeToInstant,
   weekDays,
-  weekRange,
   weekStartOf,
 } from "./dates";
 
@@ -81,25 +80,6 @@ describe("todayIn", () => {
   it("accepts an explicit now", () => {
     expect(todayIn(NY, new Date("2026-03-08T04:59:00Z"))).toBe("2026-03-07");
     expect(todayIn(NY, new Date("2026-03-08T05:00:00Z"))).toBe("2026-03-08");
-  });
-});
-
-describe("isPastDay", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    // 23:30 Oct 30 in Los Angeles, already Oct 31 in UTC.
-    vi.setSystemTime(new Date("2026-10-31T06:30:00Z"));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("uses the user's today, not UTC's", () => {
-    expect(isPastDay("2026-10-30", LA)).toBe(false);
-    expect(isPastDay("2026-10-30", "UTC")).toBe(true);
-    expect(isPastDay("2026-10-29", LA)).toBe(true);
-    expect(isPastDay("2026-10-31", LA)).toBe(false);
   });
 });
 
@@ -296,25 +276,6 @@ describe("dayStartInstant / dayEndInstant", () => {
   });
 });
 
-describe("weekRange", () => {
-  it("covers Monday 00:00 to the next Monday 00:00, including a DST change", () => {
-    const { start, end } = weekRange("2026-10-26", NY);
-    expect(start.toISOString()).toBe("2026-10-26T04:00:00.000Z");
-    expect(end.toISOString()).toBe("2026-11-02T05:00:00.000Z");
-    expect(hoursBetween(start, end)).toBe(7 * 24 + 1);
-  });
-
-  it("crosses a year boundary", () => {
-    const { start, end } = weekRange("2026-12-28", "UTC");
-    expect(start.toISOString()).toBe("2026-12-28T00:00:00.000Z");
-    expect(end.toISOString()).toBe("2027-01-04T00:00:00.000Z");
-  });
-
-  it("snaps a mid-week day to its Monday", () => {
-    expect(weekRange("2026-10-29", NY)).toEqual(weekRange("2026-10-26", NY));
-  });
-});
-
 describe("toDbDate / fromDbDate", () => {
   it("stores the day at 00:00 UTC", () => {
     expect(toDbDate("2026-10-28").toISOString()).toBe("2026-10-28T00:00:00.000Z");
@@ -439,6 +400,7 @@ describe("formatters", () => {
     expect(formatDayLong("2028-02-29")).toBe("Tuesday, February 29");
     expect(formatDayMedium("2026-11-01")).toBe("Sunday, Nov 1");
     expect(formatWeekday("2026-10-28")).toBe("Wed");
+    expect(formatWeekdayLong("2026-10-28")).toBe("Wednesday");
   });
 
   it("formats months", () => {
@@ -484,8 +446,8 @@ describe("parseDateParam", () => {
   it("accepts a real day", () => {
     expect(parseDateParam("2026-11-02", fallback)).toBe("2026-11-02");
     expect(parseDateParam("2028-02-29", fallback)).toBe("2028-02-29");
-    expect(parseDateParam("1900-01-01", fallback)).toBe("1900-01-01");
-    expect(parseDateParam("2999-12-31", fallback)).toBe("2999-12-31");
+    expect(parseDateParam("1970-01-01", fallback)).toBe("1970-01-01");
+    expect(parseDateParam("2100-12-31", fallback)).toBe("2100-12-31");
   });
 
   it.each([
@@ -500,6 +462,9 @@ describe("parseDateParam", () => {
     "0005-01-01",
     "0050-01-01",
     "1899-12-31",
+    "1969-12-31",
+    "2101-01-01",
+    "2999-12-31",
     "3000-01-01",
     "9999-12-31",
     "2026-11-02T00:00",

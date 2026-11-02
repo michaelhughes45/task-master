@@ -5,8 +5,10 @@ import { FormError } from "@/components/auth/FormError";
 import { FormField } from "@/components/auth/FormField";
 import { ResendVerificationButton } from "@/components/auth/ResendVerificationButton";
 import { SubmitButton } from "@/components/auth/SubmitButton";
+import { TEXT_LINK_CLASS } from "@/components/auth/text-link";
 import { useAuthForm } from "@/hooks/use-auth-form";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import { signInSchema } from "@/lib/validations/auth";
 
 export function SignInForm({ callbackURL }: { callbackURL: string }) {
@@ -37,7 +39,7 @@ export function SignInForm({ callbackURL }: { callbackURL: string }) {
         labelAction={
           <Link
             href="/forgot-password"
-            className="rounded-sm text-[13px] text-primary-text hover:text-primary-ink focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className={cn(TEXT_LINK_CLASS, "text-[13px]")}
           >
             Forgot password?
           </Link>

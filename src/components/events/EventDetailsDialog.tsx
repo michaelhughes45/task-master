@@ -3,10 +3,12 @@
 import { MapPin, Repeat, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { deleteEvent, deleteEventOccurrence } from "@/actions/events";
+import { deleteEventOccurrence } from "@/actions/event-occurrences";
+import { deleteEvent } from "@/actions/events";
 import { EditScopeOptions } from "@/components/items/EditScopeDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { EVENT_SOLID_CLASS } from "@/lib/event-colors";
 import type { EditScope } from "@/lib/recurrence-edit";
 import { cn } from "@/lib/utils";
 import type { EventDetails } from "@/types/events";
@@ -64,10 +66,7 @@ function EventDetailsBody({ event, onEdit, onClose }: EventDetailsBodyProps) {
       <div className="flex items-start gap-3 pt-[18px] pr-3 pb-1.5 pl-5">
         <span
           aria-hidden="true"
-          className={cn(
-            "mt-[7px] size-3 flex-none rounded-[3px]",
-            event.color === "GREEN" ? "bg-success" : "bg-primary",
-          )}
+          className={cn("mt-[7px] size-3 flex-none rounded-[3px]", EVENT_SOLID_CLASS[event.color])}
         />
         <DialogTitle className="flex-1 text-lg leading-snug font-semibold break-words">{event.title}</DialogTitle>
         <DialogClose

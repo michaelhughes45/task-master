@@ -28,6 +28,9 @@ export interface SendSummary {
 const GONE = new Set([404, 410]);
 // Keep it a day: a review notification a day late is still useful, later isn't.
 const TTL_SECONDS = 24 * 60 * 60;
+// web-push has no default timeout: a push service that never answers would hold the cron
+// until it's killed at maxDuration. A stalled send counts as failed instead.
+const SEND_TIMEOUT_MS = 10_000;
 
 function vapidDetails() {
   const { NEXT_PUBLIC_VAPID_PUBLIC_KEY: publicKey, VAPID_PRIVATE_KEY: privateKey, VAPID_SUBJECT: subject } = env;
@@ -61,7 +64,7 @@ async function sendOne(subscription: StoredSubscription, payload: string): Promi
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
       payload,
-      { vapidDetails: details, TTL: TTL_SECONDS },
+      { vapidDetails: details, TTL: TTL_SECONDS, timeout: SEND_TIMEOUT_MS },
     );
     return "sent";
   } catch (err) {

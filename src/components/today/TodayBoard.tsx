@@ -29,19 +29,16 @@ interface TodayBoardProps {
 // Owns the optimistic task list so a tick updates the row, the card counts and the summary at once.
 export function TodayBoard({ today, weekStart, tz, serverNow, tasks, schedule, labels }: TodayBoardProps) {
   const { tasks: optimisticTasks, add, ...handlers } = useTaskList(tasks, today);
-  const now = useCurrentMinute(serverNow);
   const dayTasks = optimisticTasks.filter((task) => task.scope === "DAILY" && task.day === today);
   const weekTasks = optimisticTasks.filter((task) => task.scope === "WEEKLY");
   const earlierTasks = optimisticTasks.filter((task) => task.scope === "DAILY" && task.day < today);
-  // The page may have stayed open past midnight.
-  const dayOver = now !== null && todayIn(tz, new Date(now)) !== today;
 
   return (
     <div className="flex flex-col gap-5">
       <SummaryLine dayTasks={dayTasks} weekTasks={weekTasks} eventCount={schedule.length} />
-      {now !== null && !dayOver && <NowCard items={schedule} now={now} />}
+      <LiveNowCard schedule={schedule} serverNow={serverNow} today={today} tz={tz} />
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(330px,100%),1fr))] items-start gap-6">
-        <ScheduleCard items={schedule} now={now} />
+        <LiveScheduleCard schedule={schedule} serverNow={serverNow} />
         <div className="flex min-w-0 flex-col gap-6">
           <TaskListCard
             title="Today"
@@ -73,6 +70,23 @@ export function TodayBoard({ today, weekStart, tz, serverNow, tasks, schedule, l
       </div>
     </div>
   );
+}
+
+interface LiveProps {
+  schedule: ScheduleItem[];
+  serverNow: number;
+}
+
+// The clock lives in these two, so its tick each minute re-renders the events, not the task lists.
+function LiveNowCard({ schedule, serverNow, today, tz }: LiveProps & { today: DateStr; tz: string }) {
+  const now = useCurrentMinute(serverNow);
+  // The page may have stayed open past midnight.
+  if (now === null || todayIn(tz, new Date(now)) !== today) return null;
+  return <NowCard items={schedule} now={now} />;
+}
+
+function LiveScheduleCard({ schedule, serverNow }: LiveProps) {
+  return <ScheduleCard items={schedule} now={useCurrentMinute(serverNow)} />;
 }
 
 // Phones link to the to-dos page instead of showing the weekly and earlier lists.

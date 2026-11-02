@@ -43,6 +43,3 @@ export const changePasswordSchema = z
     confirmPassword: z.string(),
   })
   .refine(passwordsMatch.check, passwordsMatch.params);
-
-export type SignInInput = z.infer<typeof signInSchema>;
-export type SignUpInput = z.infer<typeof signUpSchema>;

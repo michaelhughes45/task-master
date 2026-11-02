@@ -6,7 +6,7 @@ vi.mock("@/lib/push", () => ({ sendPush: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
-    pushSubscription: { upsert: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn() },
+    pushSubscription: { upsert: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     user: { update: vi.fn(), updateMany: vi.fn() },
   },
 }));
@@ -16,6 +16,7 @@ const { getCurrentUserId } = await import("@/lib/session");
 const { sendPush } = await import("@/lib/push");
 const { prisma } = await import("@/lib/prisma");
 const { removeSubscription, saveSubscription, sendTestNotification } = await import("./push");
+const { MAX_SUBSCRIPTIONS } = await import("@/lib/validations/push");
 
 const ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc123";
 const SUBSCRIPTION = { endpoint: ENDPOINT, expirationTime: null, keys: { p256dh: "BPk3y", auth: "a1b2" } };
@@ -24,6 +25,7 @@ const STORED = { id: "sub-1", endpoint: ENDPOINT, p256dh: "BPk3y", auth: "a1b2" 
 const upsert = vi.mocked(prisma.pushSubscription.upsert);
 const deleteMany = vi.mocked(prisma.pushSubscription.deleteMany);
 const findMany = vi.mocked(prisma.pushSubscription.findMany);
+const countSubscriptions = vi.mocked(prisma.pushSubscription.count);
 const updateUser = vi.mocked(prisma.user.update);
 const transaction = vi.mocked(prisma.$transaction);
 const claimTestPush = vi.mocked(prisma.user.updateMany);
@@ -37,6 +39,7 @@ beforeEach(() => {
   updateUser.mockImplementation(((args: unknown) => ({ op: "updateUser", args })) as never);
   transaction.mockResolvedValue([] as never);
   findMany.mockResolvedValue([STORED] as never);
+  countSubscriptions.mockResolvedValue(0);
   vi.mocked(sendPush).mockResolvedValue({ sent: 1, removed: 0, failed: 0 });
   claimTestPush.mockResolvedValue({ count: 1 });
 });
@@ -74,6 +77,25 @@ describe("saveSubscription", () => {
 
     expect(result.success).toBe(false);
     expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it(`refuses a new device once the user has ${MAX_SUBSCRIPTIONS}`, async () => {
+    countSubscriptions.mockResolvedValue(MAX_SUBSCRIPTIONS);
+
+    const result = await saveSubscription(SUBSCRIPTION);
+
+    expect(result).toEqual({ success: false, error: expect.stringContaining("Turn one off first") });
+    expect(countSubscriptions).toHaveBeenCalledWith({
+      where: { userId: "user-1", endpoint: { not: ENDPOINT } },
+    });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("still saves when the user is just under the limit, or re-saves a device they have", async () => {
+    countSubscriptions.mockResolvedValue(MAX_SUBSCRIPTIONS - 1);
+
+    expect((await saveSubscription(SUBSCRIPTION)).success).toBe(true);
+    expect(transaction).toHaveBeenCalled();
   });
 
   it("rejects signed-out callers", async () => {

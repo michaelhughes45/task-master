@@ -61,7 +61,4 @@ export const completionDetailsSchema = z.object({
     .optional(),
 });
 
-export type CreateTaskInput = z.infer<typeof createTaskSchema>;
-export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type TaskOccurrenceEditInput = z.infer<typeof taskOccurrenceEditSchema>;
-export type CompletionDetailsInput = z.infer<typeof completionDetailsSchema>;

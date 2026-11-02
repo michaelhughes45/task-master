@@ -4,7 +4,8 @@ import { TodosBoard } from "@/components/todos/TodosBoard";
 import type { WeekStripDay } from "@/components/todos/WeekStrip";
 import {
   formatDayLong,
-  formatDayShort,
+  formatWeekday,
+  formatWeekdayLong,
   formatWeekRange,
   isBefore,
   parseDateParam,
@@ -36,13 +37,13 @@ export default async function TodosPage({ searchParams }: PageProps<"/todos">) {
 
   const stripDays: WeekStripDay[] = counts.map((count) => ({
     ...count,
-    shortName: formatDayShort(count.day).split(",")[0],
+    shortName: formatWeekday(count.day),
     longName: formatDayLong(count.day),
     isToday: count.day === today,
     isPast: isBefore(count.day, today),
   }));
   const isPastDay = isBefore(day, today);
-  const weekday = formatDayLong(day).split(",")[0];
+  const weekday = formatWeekdayLong(day);
 
   return (
     <>

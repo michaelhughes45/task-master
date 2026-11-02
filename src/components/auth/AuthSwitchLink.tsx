@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { TEXT_LINK_CLASS } from "@/components/auth/text-link";
 import { DEFAULT_CALLBACK_URL } from "@/lib/safe-callback-url";
+import { cn } from "@/lib/utils";
 
 interface AuthSwitchLinkProps {
   prompt: string;
@@ -20,7 +22,7 @@ export function AuthSwitchLink({ prompt, label, href, callbackURL }: AuthSwitchL
       {prompt}{" "}
       <Link
         href={target}
-        className="rounded-sm font-medium text-primary-text hover:text-primary-ink focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className={cn(TEXT_LINK_CLASS, "font-medium")}
       >
         {label}
       </Link>

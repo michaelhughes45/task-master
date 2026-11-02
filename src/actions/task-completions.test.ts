@@ -97,6 +97,13 @@ describe("completeTask", () => {
     expect(completion.upsert).not.toHaveBeenCalled();
   });
 
+  it("rejects a day centuries out before loading the task", async () => {
+    task.findFirst.mockResolvedValue(REPEATING_TASK as never);
+
+    expect((await completeTask("task-3", "2999-10-29")).success).toBe(false);
+    expect(task.findFirst).not.toHaveBeenCalled();
+  });
+
   it("rejects a cancelled occurrence", async () => {
     task.findFirst.mockResolvedValue(REPEATING_TASK as never);
     vi.mocked(prisma.taskException.findMany).mockResolvedValue([

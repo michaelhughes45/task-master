@@ -42,10 +42,11 @@ export function TimeGrid({ columns, scrollHour, tz }: TimeGridProps) {
           </div>
           {hasAllDay && <AllDayRow columns={columns} gridClass={gridClass} />}
         </div>
-        <div className={cn("grid", gridClass)}>
+        {/* The hour height comes from the layout code, so rows, hairlines and events line up. */}
+        <div className={cn("grid", gridClass)} style={{ "--hour": `${HOUR_HEIGHT}px` } as React.CSSProperties}>
           <div aria-hidden="true" className="sticky left-0 z-10 bg-card">
             {HOURS.map((hour) => (
-              <div key={hour} className="relative h-12">
+              <div key={hour} className="relative h-(--hour)">
                 {hour > 0 && (
                   <span className="absolute -top-2 right-2 font-mono text-[11.5px] text-muted-foreground">
                     {hourLabel(hour)}

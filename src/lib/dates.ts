@@ -7,10 +7,10 @@ import type { DateStr, TaskScope, WallTime } from "@/types/dates";
 // saving can shift the day. Instants are only computed against an explicit zone.
 
 const DATE_STR = /^\d{4}-\d{2}-\d{2}$/;
-// Accepted years. Keeps Date.UTC away from years 0–99 (read as 19xx) and from day math
-// that would run past 9999, where toISOString stops returning YYYY-MM-DD.
-const MIN_DAY = "1900-01-01";
-const MAX_DAY = "2999-12-31";
+// Accepted years. Keeps Date.UTC away from years 0–99 (read as 19xx), and bounds how far rrule
+// has to step through a series: from 1970 to 2100 a daily rule takes ~80 ms, to 2999 ~0.7 s.
+const MIN_DAY = "1970-01-01";
+const MAX_DAY = "2100-12-31";
 const WALL_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
@@ -93,10 +93,6 @@ export function isBefore(dayA: DateStr, dayB: DateStr) {
   return dayA < dayB;
 }
 
-export function isPastDay(day: DateStr, tz: string, now: Date = new Date()) {
-  return isBefore(day, todayIn(tz, now));
-}
-
 export function dayStartInstant(day: DateStr, tz: string): Date {
   return wallTimeToInstant(day, "00:00", tz);
 }
@@ -104,12 +100,6 @@ export function dayStartInstant(day: DateStr, tz: string): Date {
 // Exclusive: the start of the next day. 23 or 25 hours after the start on DST change days.
 export function dayEndInstant(day: DateStr, tz: string): Date {
   return dayStartInstant(addDays(day, 1), tz);
-}
-
-// [start, end) of the Monday–Sunday week containing `weekStart`, for range queries.
-export function weekRange(weekStart: DateStr, tz: string) {
-  const monday = weekStartOf(weekStart);
-  return { start: dayStartInstant(monday, tz), end: dayStartInstant(addWeeks(monday, 1), tz) };
 }
 
 // Prisma reads and writes @db.Date as a Date at 00:00 UTC.
@@ -190,6 +180,11 @@ export function formatDayMedium(day: DateStr) {
 // "Wed"
 export function formatWeekday(day: DateStr) {
   return formatDay(day, "EEE");
+}
+
+// "Wednesday"
+export function formatWeekdayLong(day: DateStr) {
+  return formatDay(day, "EEEE");
 }
 
 // "October 28"
