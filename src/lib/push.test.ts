@@ -25,7 +25,7 @@ const deleteMany = vi.mocked(prisma.pushSubscription.deleteMany);
 
 const sub = (id: string) => ({
   id,
-  endpoint: `https://push.example.com/${id}`,
+  endpoint: `https://fcm.googleapis.com/fcm/send/${id}`,
   p256dh: `p256dh-${id}`,
   auth: `auth-${id}`,
 });
@@ -48,7 +48,7 @@ describe("sendPush", () => {
     expect(summary).toEqual({ sent: 2, removed: 0, failed: 0 });
     expect(send).toHaveBeenCalledTimes(2);
     expect(send).toHaveBeenCalledWith(
-      { endpoint: "https://push.example.com/a", keys: { p256dh: "p256dh-a", auth: "auth-a" } },
+      { endpoint: "https://fcm.googleapis.com/fcm/send/a", keys: { p256dh: "p256dh-a", auth: "auth-a" } },
       JSON.stringify(PAYLOAD),
       expect.objectContaining({
         vapidDetails: { publicKey: "public-key", privateKey: "private-key", subject: "mailto:test@example.com" },
@@ -78,10 +78,22 @@ describe("sendPush", () => {
     expect(summary).toEqual({ sent: 0, removed: 0, failed: 2 });
     expect(deleteMany).not.toHaveBeenCalled();
     const logged = log.mock.calls.flat().join(" ");
-    expect(logged).toContain("push.example.com");
+    expect(logged).toContain("fcm.googleapis.com");
     expect(logged).not.toContain("/a");
     expect(logged).not.toContain("auth-");
     expect(logged).not.toContain("p256dh-");
+  });
+
+  it("never sends to a stored endpoint that isn't a known push service", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const stray = { ...sub("x"), endpoint: "https://attacker.example.com/hook" };
+
+    const summary = await sendPush([sub("a"), stray], PAYLOAD);
+
+    expect(summary).toEqual({ sent: 1, removed: 0, failed: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].endpoint).toBe("https://fcm.googleapis.com/fcm/send/a");
+    expect(deleteMany).not.toHaveBeenCalled();
   });
 
   it("sends nothing when VAPID isn't configured", async () => {

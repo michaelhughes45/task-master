@@ -61,6 +61,7 @@ describe("saveSubscription", () => {
     ["no endpoint", { keys: SUBSCRIPTION.keys }],
     ["an http endpoint", { ...SUBSCRIPTION, endpoint: "http://push.example.com/x" }],
     ["a non-URL endpoint", { ...SUBSCRIPTION, endpoint: "javascript:alert(1)" }],
+    ["an endpoint that isn't a push service", { ...SUBSCRIPTION, endpoint: "https://attacker.example.com/hook" }],
     ["missing keys", { endpoint: ENDPOINT }],
     ["an empty auth key", { endpoint: ENDPOINT, keys: { p256dh: "x", auth: "" } }],
     ["an oversized key", { endpoint: ENDPOINT, keys: { p256dh: "x".repeat(300), auth: "a" } }],
