@@ -3,10 +3,9 @@
 import { useSyncExternalStore } from "react";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsSection } from "@/components/settings/SettingsSection";
+import { isIos, isStandalone, STANDALONE_QUERY } from "@/lib/platform";
 
 type Platform = "installed" | "ios" | "other";
-
-const STANDALONE_QUERY = "(display-mode: standalone)";
 
 function subscribe(onChange: () => void) {
   const query = window.matchMedia(STANDALONE_QUERY);
@@ -15,14 +14,8 @@ function subscribe(onChange: () => void) {
 }
 
 function getPlatform(): Platform {
-  // navigator.standalone is iOS Safari's own flag for a Home Screen app
-  const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  if (window.matchMedia(STANDALONE_QUERY).matches || iosStandalone) return "installed";
-  // iPadOS reports itself as a Mac, so also check for touch
-  const ios =
-    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-  return ios ? "ios" : "other";
+  if (isStandalone()) return "installed";
+  return isIos() ? "ios" : "other";
 }
 
 // Unknown until hydration, so an installed app never flashes the row.

@@ -1,7 +1,11 @@
 import "server-only";
 import { z } from "zod";
 
-// Only the variables the app reads today. Add the push and cron ones with their specs.
+// An empty value (e.g. "KEY=" copied from .env.example) counts as unset.
+function optional<T extends z.ZodType>(schema: T) {
+  return z.preprocess((value) => (value === "" ? undefined : value), schema.optional());
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.url(),
@@ -16,6 +20,12 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((value) => value !== "false"),
+  // Optional so a missing key only stops push, not the whole app
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: optional(z.string()),
+  VAPID_PRIVATE_KEY: optional(z.string()),
+  VAPID_SUBJECT: optional(z.string().regex(/^(mailto:|https:\/\/)/)),
+  // Without it the cron route rejects every request
+  CRON_SECRET: optional(z.string().min(16)),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -5,11 +5,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { AppearanceSetting } from "@/components/settings/AppearanceSetting";
 import { ChangePasswordDialog } from "@/components/settings/ChangePasswordDialog";
 import { InstallApp } from "@/components/settings/InstallApp";
-import { ReviewNotifySetting } from "@/components/settings/ReviewNotifySetting";
+import { ReviewReminder } from "@/components/settings/ReviewReminder";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsSection } from "@/components/settings/SettingsSection";
 import { TimezoneSetting } from "@/components/settings/TimezoneSetting";
 import { auth } from "@/lib/auth";
+import { env } from "@/lib/env";
+import { isPushConfigured } from "@/lib/push";
 import { requireUser } from "@/lib/session";
 import { TIMEZONES } from "@/lib/timezones";
 
@@ -52,12 +54,10 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection title="Notifications">
-          <SettingsRow
-            label="Sunday review reminder"
-            description="A notification on Sundays at 7:00 PM. On iPhone, add Task Master to your Home Screen first."
-          >
-            <ReviewNotifySetting enabled={user.reviewNotify ?? true} />
-          </SettingsRow>
+          <ReviewReminder
+            reviewNotify={user.reviewNotify ?? true}
+            vapidPublicKey={isPushConfigured() ? (env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null) : null}
+          />
         </SettingsSection>
 
         <InstallApp />
