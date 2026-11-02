@@ -1,18 +1,38 @@
-# Current Feature
+# Current Feature: Sunday Review Push Notification (22)
 
-<!-- Feature name and short description -->
+Web push at 7 PM Sunday in each user's timezone saying the weekly review is ready. Users opt in from Settings; an hourly Vercel Cron job sends to users whose local time is Sunday 7 PM.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `web-push` installed; VAPID keys generated; `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET` in `.env.example` and validated in `src/lib/env.ts`
+- Prisma `PushSubscription` (`endpoint` unique, `p256dh`, `auth`, `userId`, `createdAt`), cascade from `User`; migration `push` on `development`
+- `src/actions/push.ts`: `saveSubscription(sub)` (upsert by endpoint for the session user), `removeSubscription(endpoint)`, `sendTestNotification()`, with tests
+- `src/lib/push.ts` (`web-push` wrapper: send to each of a user's subscriptions, delete on 404/410, never log keys)
+- `src/lib/notify-schedule.ts` (pure): which week each user's notice is about (their latest ready week); tests incl. DST weekends and `Asia/Kolkata` / `Asia/Kathmandu`
+- Settings "Sunday review reminder" switch (`src/components/settings/ReviewReminder.tsx`):
+  - On → permission prompt, `pushManager.subscribe` with the VAPID key, save subscription, `reviewNotify = true`
+  - Off → unsubscribe this device, `reviewNotify = false`
+  - Clear states: not supported, permission denied (how to re-enable), iPhone not installed ("Add to Home Screen first")
+  - "Send a test notification" button when subscribed
+- `public/sw.js`: `push` handler (title "Your weekly review is ready", body like "You finished 28 of 36 tasks this week.", icon); `notificationclick` focuses or opens `/review`
+- `src/app/api/cron/review/route.ts`: `Authorization: Bearer ${CRON_SECRET}` (constant-time compare, else 401); every user with `reviewNotify` + ≥1 subscription; body from `getWeeklyReview` for their latest ready week; send to every subscription; delete 404/410; JSON `{ sent, removed, failed }`; injectable `now` for testing; tests for auth and selection
+- `vercel.json`: cron `0 2 * * 1` (weekly) → `/api/cron/review`
+- `npm test`, `npm run lint`, `npm run build` pass
 
 ## Notes
 
-<!-- Any extra notes -->
+- Existing pieces: `User.reviewNotify` (default `true`), `updateReviewNotify` in `src/actions/settings.ts`, `ReviewNotifySetting.tsx` (switch that only stores the preference; replace it with `ReviewReminder`), `src/lib/env.ts` (comment says push/cron vars arrive with this spec), `.env.example` already lists the four vars, `public/sw.js` + `RegisterServiceWorker` (production only, so local testing of push needs a production build).
+- Since `reviewNotify` defaults to `true`, the cron must also require a subscription, and the switch should show "off" for this device when it has no subscription even if `reviewNotify` is true.
+- Several devices per user: send to each subscription. Turning off on one device unsubscribes that device; decide whether `reviewNotify` flips off only when no subscriptions remain or always (spec says always).
+- Never log subscription keys or endpoints in full.
+- iPhone: push only in the installed app (iOS 16.4+); reuse the standalone/iOS detection from `InstallApp`.
+- **Deviation: weekly cron instead of hourly.** Vercel Hobby rejects crons that run more than once a day at deploy and only promises a run within ±59 min. Personal use, so one weekly run at `0 2 * * 1` (02:00 UTC Monday = Sunday 7–8 PM MST, 8–9 PM MDT for the owner's `America/Denver`) notifies everyone with the reminder on about their latest ready week (`defaultReviewWeek`), with no time window, so DST or a late run can't skip a week. Other zones get it at a different hour (e.g. LA before its 7 PM → about the previous week). Changing the owner's zone means editing `vercel.json`. Agreed with the user 2026-11-02.
+- `CRON_SECRET` compare with `crypto.timingSafeEqual` (length check first).
+- Check installed `web-push`, Next.js route handler and Vercel cron docs before writing code (AGENTS.md).
 
 ## History
 

@@ -52,3 +52,35 @@ describe("EMAIL_VERIFICATION_ENABLED", () => {
     expect(parseEnv({ ...VALID, EMAIL_VERIFICATION_ENABLED: "false" }).EMAIL_VERIFICATION_ENABLED).toBe(false);
   });
 });
+
+describe("push and cron variables", () => {
+  it("are optional", () => {
+    const env = parseEnv(VALID);
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined();
+    expect(env.CRON_SECRET).toBeUndefined();
+  });
+
+  it("treat empty values as unset", () => {
+    const env = parseEnv({
+      ...VALID,
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: "",
+      VAPID_PRIVATE_KEY: "",
+      VAPID_SUBJECT: "",
+      CRON_SECRET: "",
+    });
+    expect(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY).toBeUndefined();
+    expect(env.VAPID_SUBJECT).toBeUndefined();
+    expect(env.CRON_SECRET).toBeUndefined();
+  });
+
+  it("accept a mailto: or https: subject and a long cron secret", () => {
+    const env = parseEnv({ ...VALID, VAPID_SUBJECT: "mailto:me@example.com", CRON_SECRET: "x".repeat(32) });
+    expect(env.VAPID_SUBJECT).toBe("mailto:me@example.com");
+    expect(parseEnv({ ...VALID, VAPID_SUBJECT: "https://example.com" }).VAPID_SUBJECT).toBe("https://example.com");
+  });
+
+  it("reject a bad subject or a short cron secret", () => {
+    expect(() => parseEnv({ ...VALID, VAPID_SUBJECT: "me@example.com" })).toThrow("VAPID_SUBJECT");
+    expect(() => parseEnv({ ...VALID, CRON_SECRET: "short" })).toThrow("CRON_SECRET");
+  });
+});
