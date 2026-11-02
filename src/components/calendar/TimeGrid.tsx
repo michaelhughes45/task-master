@@ -28,7 +28,9 @@ export function TimeGrid({ columns, scrollHour, tz }: TimeGridProps) {
     <GridScroller
       scrollTop={scrollHour * HOUR_HEIGHT}
       resetKey={`${columns.length}-${columns[0].day}`}
-      className="h-[calc(100dvh-19rem)] min-h-80 overflow-auto rounded-lg border bg-card outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:h-[calc(100dvh-13rem)]"
+      // On phones the grid ends above the tab bar, and the bottom padding lets the last hours
+      // scroll out from under the + button.
+      className="h-[calc(100dvh-22rem-env(safe-area-inset-bottom))] min-h-80 overflow-auto pb-16 md:pb-0 rounded-lg border bg-card outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:h-[calc(100dvh-13rem)]"
     >
       <div className={cn(isWeek && "min-w-[760px]")}>
         <div className="sticky top-0 z-20 border-b bg-card">

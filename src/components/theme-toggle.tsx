@@ -18,7 +18,9 @@ export function ThemeToggle({ className }: { className?: string }) {
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
-      {mounted ? isDark ? <Sun /> : <Moon /> : null}
+      {/* Picked by the theme class next-themes sets before paint, so an icon shows before hydration. */}
+      <Sun aria-hidden="true" className="hidden dark:block" />
+      <Moon aria-hidden="true" className="dark:hidden" />
     </Button>
   );
 }

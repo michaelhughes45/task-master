@@ -134,7 +134,8 @@ export function TaskRow({ task, missed, disabled, dayLabel, onToggle, actions, d
             onClick={onToggle}
             disabled={disabled}
             aria-label={`Mark done late: ${task.title}`}
-            className="relative h-8 flex-none px-2.5 text-[13px] after:absolute after:-inset-y-1.5 after:inset-x-0"
+            // Full 44px on phones; smaller on desktop with the hit area enlarged instead.
+            className="relative mr-1 h-11 flex-none px-3 text-[13px] md:h-8 md:px-2.5 md:after:absolute md:after:-inset-y-1.5 md:after:inset-x-0"
           >
             Mark done
           </Button>

@@ -17,7 +17,9 @@ export interface CalendarEvent {
 // A timed event's part of one day, positioned in that day's column.
 export interface PositionedEvent extends CalendarEvent {
   layout: EventLayout;
-  timeLabel: string;
+  // "9:00 AM" and "10:00 AM"; narrow blocks show only the start.
+  startLabel: string;
+  endLabel: string;
   // Hidden on blocks shorter than 45 minutes.
   showTime: boolean;
 }

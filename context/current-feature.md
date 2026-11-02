@@ -1,18 +1,28 @@
-# Current Feature
+# Current Feature: UI Review Fixes
 
-<!-- Feature name and short description -->
+Fix issues 2, 4, 6 and 8 from the ui-reviewer pass of 2026-11-02 (phone FAB overlap, cut-off event times in the week view, small tap targets on the To-dos page, blank theme toggle icon on first paint).
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- **FAB overlap (2):** on phones, the floating "+" button never permanently hides content or row actions. At the end of every page's scroll the last row (its menu, "Add a task", the review's Day by day legend) is fully visible and tappable. The calendar day/week grid (its own scroll region) keeps its right edge and last hour reachable too.
+- **Event times in the week view (4):** time labels inside event blocks no longer end in "…" at 375px, 768px or 1280px. Narrow blocks show something readable (e.g. the start time only, or the range wrapped onto two lines); the full range stays in the block's `aria-label` and the details dialog.
+- **To-dos tap targets (6):** the past-day "Mark done" button has a tap area at least 44px tall without looking crowded next to the clock button, and each week-strip day is at least 44px wide at 375px (or has an equivalent hit area). Missed days in the strip get a non-colour signal (icon or text) in addition to the orange count.
+- **Theme toggle (8):** the header theme toggle shows an icon on first paint (no empty square before hydration) and has no hydration mismatch.
+- No regressions on desktop; `npm run lint`, `npm test` and `npm run build` pass.
 
 ## Notes
 
-<!-- Any extra notes -->
+- Source: ui-reviewer report, 2026-11-02 (issues 2, 4, 6, 8; the others were left out on purpose).
+- Check each finding before fixing; some may be partly handled already:
+  - (2) `<main>` in `src/app/(app)/layout.tsx` already has `pb-[calc(160px+env(safe-area-inset-bottom))]` on phones, and the FAB in `src/components/layout/Fab.tsx` sits at `bottom-[calc(84px+…)]`. A fixed button will always cover something mid-scroll; the goal is that nothing is unreachable at the scroll end. The calendar grid scrolls inside `GridScroller`, so page padding doesn't help there; it likely needs its own bottom/right clearance.
+  - (4) `EventBlock` in `src/components/calendar/EventBlock.tsx` renders `event.timeLabel` with `truncate`; `showTime` comes from `calendar-view.ts`. Any change to the label logic in `src/lib/` needs unit tests.
+  - (6) "Mark done" in `src/components/todos/TaskRow.tsx` is `h-8` with an `after:-inset-y-1.5` hit area (≈44px already), so measure it before changing. `WeekStrip` uses `grid-cols-7 gap-1.5`; at 375px with a 16px gutter each cell is about 43px.
+  - (8) `src/components/theme-toggle.tsx` renders `null` until `useMounted()`. Since dark mode is class-based (next-themes sets the class before paint), both icons can render with `dark:` classes so no JS is needed for the first paint; keep the `aria-label` correct after mount.
+- Verify at 375px, 768px and 1280px, light and dark, with the demo user on a production build.
 
 ## History
 

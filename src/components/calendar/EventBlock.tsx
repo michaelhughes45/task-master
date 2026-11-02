@@ -42,7 +42,14 @@ export function EventBlock({ event }: { event: PositionedEvent }) {
       }}
     >
       <span className="block truncate font-semibold">{event.title}</span>
-      {event.showTime && <span className="block truncate font-mono text-[11.5px]">{event.timeLabel}</span>}
+      {event.showTime && (
+        // One clipped line that wraps: when the end time doesn't fit it drops to the hidden
+        // second line, leaving just the start instead of "9:00 AM – …".
+        <span className="flex h-[1lh] flex-wrap overflow-hidden font-mono text-[11.5px]">
+          <span className="max-w-full truncate">{event.startLabel}</span>
+          <span className="whitespace-pre"> – {event.endLabel}</span>
+        </span>
+      )}
     </button>
   );
 }

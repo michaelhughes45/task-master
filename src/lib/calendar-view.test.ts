@@ -118,7 +118,8 @@ describe("buildCalendarColumns", () => {
     expect(columns[0]).toMatchObject({ heading: "Wednesday", dayNumber: 28, isToday: true });
     expect(columns[0].timed[0]).toMatchObject({
       id: "gym",
-      timeLabel: "9:00 AM – 10:00 AM",
+      startLabel: "9:00 AM",
+      endLabel: "10:00 AM",
       showTime: true,
       layout: { top: 432, height: 48 },
     });
@@ -142,7 +143,7 @@ describe("buildCalendarColumns", () => {
     const { columns } = build([event], ["2026-10-27", "2026-10-28"], "week");
     expect(columns[0].timed[0].layout).toMatchObject({ top: 22 * 48, height: 2 * 48 });
     expect(columns[1].timed[0].layout).toMatchObject({ top: 0, height: 48 });
-    expect(columns[1].timed[0].timeLabel).toBe("10:00 PM – 1:00 AM");
+    expect(columns[1].timed[0]).toMatchObject({ startLabel: "10:00 PM", endLabel: "1:00 AM" });
   });
 
   it("keeps each occurrence of a repeating event apart", () => {
