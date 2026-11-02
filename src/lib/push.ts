@@ -2,6 +2,7 @@ import "server-only";
 import webpush, { WebPushError } from "web-push";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+import { isPushServiceEndpoint } from "@/lib/validations/push";
 
 export interface PushPayload {
   title: string;
@@ -51,6 +52,11 @@ type Outcome = "sent" | "removed" | "failed";
 async function sendOne(subscription: StoredSubscription, payload: string): Promise<Outcome> {
   const details = vapidDetails();
   if (!details) return "failed";
+  // Rows saved before the push service allowlist could point anywhere: never POST to those.
+  if (!isPushServiceEndpoint(subscription.endpoint)) {
+    console.error(`Skipped push to ${endpointHost(subscription.endpoint)}: not a known push service`);
+    return "failed";
+  }
   try {
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },

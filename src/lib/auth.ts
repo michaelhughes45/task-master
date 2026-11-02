@@ -27,8 +27,9 @@ export const auth = betterAuth({
     sendOnSignUp: verificationRequired,
     autoSignInAfterVerification: true,
   },
-  // In memory, per server instance. Better Auth only enables it in production by default.
-  rateLimit: { enabled: true },
+  // Counts live in the database so every serverless instance shares them and cold starts don't
+  // reset them. Better Auth only enables rate limiting in production by default.
+  rateLimit: { enabled: true, storage: "database" },
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
