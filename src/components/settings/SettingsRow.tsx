@@ -3,7 +3,7 @@ interface SettingsRowProps {
   description: React.ReactNode;
   // Set when the control is a single input, so the label names it
   htmlFor?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function SettingsRow({ label, description, htmlFor, children }: SettingsRowProps) {

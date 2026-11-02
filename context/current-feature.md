@@ -1,18 +1,28 @@
-# Current Feature
+# Current Feature: Installable App (PWA)
 
-<!-- Feature name and short description -->
+Make Task Master installable on phones and computers: a web app manifest, icons, a minimal service worker, and install guidance. Push notifications come in spec 22.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- `src/app/manifest.ts`: name and short name "Task Master", `start_url: "/today"`, `display: "standalone"`, `background_color` `#F4F6F9` and `theme_color` `#1D5BD6` (from the tokens), icons.
+- Icons from the logo mark (blue rounded square, green check): 192, 512, a 512 maskable version with padding, and an `apple-touch-icon` 180. Generated from one SVG by `scripts/generate-icons.ts` (using `sharp`); the PNGs are committed in `public/icons/`.
+- Root metadata: `appleWebApp` (capable, title, status bar style) and `themeColor` for light and dark.
+- `public/sw.js`: minimal service worker (install/activate, network-first passthrough), no offline caching of app data. Registered by `src/components/pwa/RegisterServiceWorker.tsx` in the root layout, production only.
+- Settings → new "Install app" row (`src/components/settings/InstallApp.tsx`): how to install (Chrome/Edge install button; iPhone: Share → Add to Home Screen), hidden when running standalone (`display-mode: standalone`).
+- Bottom tab bar and FAB respect safe-area insets when running standalone.
 
 ## Notes
 
-<!-- Any extra notes -->
+- Files: `src/app/manifest.ts`, `public/icons/*`, `public/sw.js`, `scripts/generate-icons.ts`, `src/app/layout.tsx`, `src/components/pwa/RegisterServiceWorker.tsx`, `src/components/settings/InstallApp.tsx`.
+- Testing: `npm run build && npm run start` → Chrome DevTools Application shows a valid manifest and an active service worker, install prompt available; Lighthouse installability checks pass; on a phone (deployed site or tunnel) opens to `/today` without browser UI and the tab bar clears the home indicator.
+- Read the installed Next.js PWA guide (`node_modules/next/dist/docs/`) before writing code; reference: https://nextjs.org/docs/app/guides/progressive-web-apps
+- `/sw.js` and `/icons/*` (and the manifest) must be reachable signed out, so check `src/proxy.ts`'s matcher.
+- `BottomTabs` already pads by `env(safe-area-inset-bottom)` with `viewportFit: "cover"`; check the FAB too.
+- Spec 22 adds push handling to the same `sw.js`.
 
 ## History
 
