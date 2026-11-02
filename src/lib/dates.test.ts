@@ -3,6 +3,7 @@ import {
   addDays,
   addMonths,
   addWeeks,
+  daysBetween,
   dayEndInstant,
   dayStartInstant,
   formatDayLong,
@@ -134,6 +135,24 @@ describe("addDays / addWeeks", () => {
     expect(addDays("2028-02-29", 1)).toBe("2028-03-01");
     expect(addDays("2027-02-28", 1)).toBe("2027-03-01");
     expect(addWeeks("2028-02-26", 1)).toBe("2028-03-04");
+  });
+});
+
+describe("daysBetween", () => {
+  it("counts calendar days in either direction", () => {
+    expect(daysBetween("2026-10-28", "2026-10-28")).toBe(0);
+    expect(daysBetween("2026-10-28", "2026-11-04")).toBe(7);
+    expect(daysBetween("2026-11-04", "2026-10-28")).toBe(-7);
+    expect(daysBetween("2026-12-31", "2027-01-01")).toBe(1);
+  });
+
+  it("is not shifted by daylight saving changes or the leap day", () => {
+    expect(daysBetween("2026-03-07", "2026-03-09")).toBe(2);
+    expect(daysBetween("2026-10-31", "2026-11-02")).toBe(2);
+    // Auckland (the test process zone) springs forward on Sep 27, 2026.
+    expect(daysBetween("2026-09-26", "2026-09-28")).toBe(2);
+    expect(daysBetween("2028-02-28", "2028-03-01")).toBe(2);
+    expect(daysBetween("2027-02-28", "2027-03-01")).toBe(1);
   });
 });
 
