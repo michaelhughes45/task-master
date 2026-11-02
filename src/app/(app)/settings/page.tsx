@@ -4,6 +4,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AppearanceSetting } from "@/components/settings/AppearanceSetting";
 import { ChangePasswordDialog } from "@/components/settings/ChangePasswordDialog";
+import { InstallApp } from "@/components/settings/InstallApp";
 import { ReviewNotifySetting } from "@/components/settings/ReviewNotifySetting";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsSection } from "@/components/settings/SettingsSection";
@@ -58,6 +59,8 @@ export default async function SettingsPage() {
             <ReviewNotifySetting enabled={user.reviewNotify ?? true} />
           </SettingsRow>
         </SettingsSection>
+
+        <InstallApp />
 
         <SettingsSection title="Account">
           <SettingsRow label="Email" description={user.email}>
