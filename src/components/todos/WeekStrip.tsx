@@ -1,3 +1,4 @@
+import { Check, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { DateStr } from "@/types/dates";
@@ -19,18 +20,25 @@ interface WeekStripProps {
   selected: DateStr;
 }
 
-function countClass({ done, total, isPast }: WeekStripDay) {
-  if (total > 0 && done === total) return "text-success-ink";
-  if (isPast && done < total) return "text-warning";
-  return "text-muted-foreground";
+function dayState({ done, total, isPast }: WeekStripDay) {
+  if (total > 0 && done === total) return "done";
+  if (isPast && done < total) return "missed";
+  return "open";
 }
+
+const COUNT_CLASS = {
+  done: "text-success-ink",
+  missed: "text-warning",
+  open: "text-muted-foreground",
+};
 
 export function WeekStrip({ days, selected }: WeekStripProps) {
   return (
     <nav aria-label="Days of the week">
-      <ul className="grid grid-cols-7 gap-1.5 sm:gap-2">
+      <ul className="grid grid-cols-7 gap-0.5 min-[400px]:gap-1.5 sm:gap-2">
         {days.map((d) => {
           const isSelected = d.day === selected;
+          const state = dayState(d);
           return (
             <li key={d.day} className="min-w-0">
               <Link
@@ -45,7 +53,10 @@ export function WeekStrip({ days, selected }: WeekStripProps) {
               >
                 <span className="text-[12.5px] font-medium text-muted-foreground">{d.shortName}</span>
                 <span className="text-lg font-semibold">{Number(d.day.slice(8))}</span>
-                <span className={cn("font-mono text-xs", countClass(d))}>
+                {/* The icon keeps done and missed apart without relying on colour. */}
+                <span className={cn("flex items-center gap-0.5 font-mono text-xs", COUNT_CLASS[state])}>
+                  {state === "done" && <Check aria-hidden="true" className="size-3" />}
+                  {state === "missed" && <CircleAlert aria-hidden="true" className="size-3" />}
                   {d.done}/{d.total}
                 </span>
               </Link>

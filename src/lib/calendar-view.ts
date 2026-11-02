@@ -116,7 +116,8 @@ export function buildCalendarColumns({ events, days, today, view, tz }: ColumnsI
         return {
           ...items.get(layout.id)!,
           layout,
-          timeLabel: `${formatTime(event.startAt, tz)} – ${formatTime(event.endAt, tz)}`,
+          startLabel: formatTime(event.startAt, tz),
+          endLabel: formatTime(event.endAt, tz),
           showTime: span.end - span.start >= SHOW_TIME_MINUTES,
         };
       }),
