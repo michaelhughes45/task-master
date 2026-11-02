@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { addDays, instantToWallTime, toDbDate, wallTimeToInstant } from "@/lib/dates";
+import { addDays, daysBetween, instantToWallTime, toDbDate, wallTimeToInstant } from "@/lib/dates";
 import {
   eventDay,
   eventStartOn,
@@ -41,7 +41,6 @@ export type EditScope = z.infer<typeof editScopeSchema>;
 
 export const NOT_AN_OCCURRENCE = "That occurrence isn't in the series any more.";
 const CANT_SPLIT = "That repeat rule can't be split. Edit all occurrences instead.";
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 type PlanError = { type: "error"; error: string; field?: string };
 
@@ -251,10 +250,6 @@ export type EventPlan =
 
 function duration(event: EventSeries) {
   return event.endAt.getTime() - event.startAt.getTime();
-}
-
-function daysBetween(from: DateStr, to: DateStr) {
-  return Math.round((toDbDate(to).getTime() - toDbDate(from).getTime()) / DAY_MS);
 }
 
 // The occurrence as shown (exception applied), or null if it isn't a live occurrence.

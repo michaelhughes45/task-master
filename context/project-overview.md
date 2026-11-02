@@ -15,7 +15,7 @@
 - [Tech Stack](#-tech-stack)
 - [Architecture](#-architecture)
 - [UI / UX](#-ui--ux)
-- [Suggested Project Structure](#-suggested-project-structure)
+- [Project Structure](#-project-structure)
 - [Environment Variables](#-environment-variables)
 - [Development Workflow](#️-development-workflow)
 - [Screenshots](#-screenshots)
@@ -70,7 +70,7 @@ See [Weekly Review](#-weekly-review).
 ### E) Notifications (PWA)
 
 - Installable to the home screen on phone and desktop.
-- Web push notification on **Sunday at 7pm** (user's timezone): "Your weekly review is ready."
+- Web push notification on **Sunday evening**: "Your weekly review is ready." The Vercel Hobby cron runs once a week (Monday 02:00 UTC, ±59 min), which is Sunday 7–8 PM MST / 8–9 PM MDT for the owner's `America/Denver`; users in other timezones get it at a different local hour (see [Review notification flow](#-review-notification-flow)).
 - iPhone only shows web push for apps added to the Home Screen (iOS 16.4+).
 - Event reminders are a possible later addition, not in the MVP.
 
@@ -291,7 +291,7 @@ erDiagram
 | 🎨 CSS / UI | [Tailwind CSS v4](https://tailwindcss.com/docs) + [shadcn/ui](https://ui.shadcn.com/) | Icons via [Lucide](https://lucide.dev/) |
 | ✅ Validation | [Zod](https://zod.dev/) | Shared schemas for forms & server actions |
 | 🔔 Push | Web Push API + [web-push](https://github.com/web-push-libs/web-push) | Service worker, VAPID keys |
-| ⏰ Scheduled jobs | [Vercel Cron](https://vercel.com/docs/cron-jobs) | Hourly check that sends Sunday 7pm notifications per timezone |
+| ⏰ Scheduled jobs | [Vercel Cron](https://vercel.com/docs/cron-jobs) | Weekly run (`0 2 * * 1` in `vercel.json`) that sends the Sunday review notification |
 | 🧪 Unit testing | [Vitest](https://vitest.dev/) | Server actions and utilities only, not components |
 | 🚀 Deployment | [Vercel](https://vercel.com/docs) | |
 
@@ -308,7 +308,7 @@ Browser / installed PWA
 Next.js on Vercel ──► Prisma ──► Neon Postgres
    │
    ├─ /api/auth/[...all]   Better Auth handler
-   ├─ /api/cron/review     Vercel Cron (hourly) → web-push
+   ├─ /api/cron/review     Vercel Cron (weekly) → web-push
    └─ service worker       receives push, opens /review
 ```
 
@@ -327,8 +327,8 @@ Next.js on Vercel ──► Prisma ──► Neon Postgres
 
 ### 🔔 Review notification flow
 
-1. Vercel Cron calls `/api/cron/review` every hour (protected by `CRON_SECRET`).
-2. For each user where it's currently Sunday 19:00–19:59 in their timezone and `reviewNotify` is on, send a push to each subscription.
+1. Vercel Cron calls `/api/cron/review` once a week, Monday 02:00 UTC (`0 2 * * 1` in `vercel.json`), with `Authorization: Bearer $CRON_SECRET`. Vercel Hobby allows at most one run a day and fires anywhere in that hour, so there is no per-timezone window: the schedule is set for the owner's `America/Denver` (Sunday 7–8 PM MST / 8–9 PM MDT), and changing the owner's timezone means editing `vercel.json`.
+2. For each user with `reviewNotify` on and at least one subscription, send a push for their latest ready week ("You finished N of M tasks this week.", opens `/review/<weekStart>`) to each subscription.
 3. Expired subscriptions (HTTP 404/410) are deleted.
 
 ---
@@ -354,12 +354,12 @@ Next.js on Vercel ──► Prisma ──► Neon Postgres
 | `/today` | Today page (home after sign-in) |
 | `/calendar?view=day\|week\|month&date=YYYY-MM-DD` | Calendar |
 | `/todos?date=YYYY-MM-DD` | Daily and weekly lists for a day/week, including past ones |
-| `/review` and `/review/[weekStart]` | This week's review and past weeks |
+| `/review` and `/review/[weekStart]` | Last week's review (this week's from Sunday 7 PM in the user's timezone) and past weeks |
 | `/settings` | Timezone, notifications, account |
 
 ---
 
-## 📁 Suggested Project Structure
+## 📁 Project Structure
 
 ```
 src/
@@ -368,20 +368,28 @@ src/
     (app)/today, calendar, todos, review, settings
     api/auth/[...all]/route.ts
     api/cron/review/route.ts
-  actions/            # server actions: tasks.ts, events.ts, completions.ts, settings.ts, push.ts
+    manifest.ts       # PWA manifest
+  actions/            # server actions: tasks.ts (incl. completions), events.ts, settings.ts, push.ts
   components/
     ui/               # shadcn primitives
-    today/ calendar/ todos/ review/ layout/
+    auth/ calendar/ events/ items/ layout/ pwa/ review/ settings/ today/ todos/
   lib/
     auth.ts           # Better Auth server config
     auth-client.ts    # Better Auth client
     session.ts        # getSession, getCurrentUserId, requireUser
     env.ts            # Zod-validated environment variables
     prisma.ts
+    email.ts          # Resend verification and reset emails
+    dates.ts          # timezone, week and formatting helpers
     recurrence.ts     # rrule expansion + exceptions
-    dates.ts          # timezone + week helpers
+    recurrence-edit.ts # this / following / all edit plans
+    rrule-builder.ts  # repeat presets, RRULE build/parse/describe
     review.ts         # weekly review calculations
-    db/               # queries: tasks.ts, events.ts, review.ts
+    review-view.ts    # review page helpers (ready time, summaries)
+    push.ts           # web-push sending
+    cron-auth.ts      # CRON_SECRET check
+    notify-schedule.ts # which week each user is notified about
+    db/               # queries: tasks.ts, events.ts, review.ts, progress.ts
     validations/      # zod schemas
   hooks/              # custom hooks: use-[name].ts
   types/              # includes actions.ts (ActionResult<T>)
@@ -390,8 +398,12 @@ prisma/
   schema.prisma
   seed.ts
 public/
-  manifest.webmanifest
-  sw.js
+  icons/              # generated by `npm run icons`
+  sw.js               # service worker: push + notification click
+scripts/
+  generate-icons.ts
+  test-db.ts
+vercel.json           # weekly review cron
 ```
 
 ---
@@ -466,20 +478,20 @@ Each item is one spec in `context/features/`, built in order with `/feature load
 - [x] `09-todos-page-spec`: week strip, daily/weekly lists, ticking, late completion
 - [x] `10-task-details-spec`: time spent and notes
 - [x] `11-events-backend-spec`: events model, actions, seed
-- [ ] `12-new-item-dialog-spec`: New task/event dialog, event details
-- [ ] `13-calendar-week-day-spec`: week and day views
-- [ ] `14-calendar-month-spec`: month view
-- [ ] `15-recurrence-core-spec`: RRULE storage and expansion engine
-- [ ] `16-recurrence-ui-spec`: repeat presets and custom options
-- [ ] `17-recurrence-edit-scope-spec`: this / following / all
-- [ ] `18-today-page-spec`: morning overview, desktop and phone
-- [ ] `19-weekly-review-calc-spec`: review calculations
-- [ ] `20-weekly-review-page-spec`: review page and history
+- [x] `12-new-item-dialog-spec`: New task/event dialog, event details
+- [x] `13-calendar-week-day-spec`: week and day views
+- [x] `14-calendar-month-spec`: month view
+- [x] `15-recurrence-core-spec`: RRULE storage and expansion engine
+- [x] `16-recurrence-ui-spec`: repeat presets and custom options
+- [x] `17-recurrence-edit-scope-spec`: this / following / all
+- [x] `18-today-page-spec`: morning overview, desktop and phone
+- [x] `19-weekly-review-calc-spec`: review calculations
+- [x] `20-weekly-review-page-spec`: review page and history
 
 ### 🟣 Phase 2 — PWA and launch
 
-- [ ] `21-pwa-spec`: installable app
-- [ ] `22-push-notifications-spec`: Sunday review notification
+- [x] `21-pwa-spec`: installable app
+- [x] `22-push-notifications-spec`: Sunday review notification
 - [ ] `23-deploy-spec`: Vercel + Neon production
 
 ### 🔮 Future Enhancements

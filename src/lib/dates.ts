@@ -58,6 +58,11 @@ export function addWeeks(day: DateStr, n: number): DateStr {
   return addDays(day, n * 7);
 }
 
+// Calendar days from `from` to `to` (negative when `to` is earlier). UTC days are all 24h long.
+export function daysBetween(from: DateStr, to: DateStr) {
+  return Math.round((utcDate(to).getTime() - utcDate(from).getTime()) / DAY_MS);
+}
+
 // Weeks run Monday–Sunday and are identified by their Monday.
 export function weekStartOf(day: DateStr): DateStr {
   const daysSinceMonday = (utcDate(day).getUTCDay() + 6) % 7;
