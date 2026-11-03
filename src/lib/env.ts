@@ -11,6 +11,8 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   BETTER_AUTH_SECRET: z.string().min(32),
   BETTER_AUTH_URL: z.url(),
+  // The public address; Better Auth trusts it as an origin (BETTER_AUTH_URL's origin is trusted already)
+  APP_URL: optional(z.url()),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   // Optional so a missing key only fails sends, not the whole app
