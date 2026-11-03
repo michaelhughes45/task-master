@@ -508,7 +508,7 @@ Each item is one spec in `context/features/`, built in order with `/feature load
 
 - [x] `21-pwa-spec`: installable app
 - [x] `22-push-notifications-spec`: Sunday review notification
-- [ ] `23-deploy-spec`: Vercel + Neon production
+- [x] `23-deploy-spec`: Vercel + Neon production
 
 ### 🔮 Future Enhancements
 
