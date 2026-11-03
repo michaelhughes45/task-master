@@ -41,6 +41,13 @@ export function isDateStr(value: unknown): value is DateStr {
   return toDateStr(utcDate(value)) === value;
 }
 
+// Whether an instant falls on an accepted day in some timezone. Zones run from UTC−12 to UTC+14,
+// so a day away from the accepted days' UTC bounds covers them all.
+export function isInstantInRange(instant: Date) {
+  const time = instant.getTime();
+  return time >= utcDate(MIN_DAY, -1).getTime() && time < utcDate(MAX_DAY, 2).getTime();
+}
+
 export function resolveTimezone(user: { timezone?: string | null } | null | undefined) {
   const timezone = user?.timezone;
   return timezone && isValidTimezone(timezone) ? timezone : "UTC";

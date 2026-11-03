@@ -1,12 +1,12 @@
-import { resolveTimezone } from "@/lib/dates";
-import { defaultReviewWeek } from "@/lib/review-view";
+import { addDays, addWeeks, resolveTimezone, todayIn, weekStartOf } from "@/lib/dates";
+import { isReviewReady } from "@/lib/review-view";
 import type { DateStr } from "@/types/dates";
 import type { ReviewTotals } from "@/types/review";
 
-// The cron runs once a week (vercel.json), timed for Sunday evening in the owner's zone, and
-// notifies everyone it finds. Each user hears about their latest ready week, the one /review
-// opens on, so a run that lands early or late (DST, Hobby's ±59 min, another zone) still
-// points at a real review instead of being skipped.
+// The cron runs once a week (vercel.json), late enough on Sunday that the review is ready in
+// every US zone, Hawaii included. Each user hears about the week whose Sunday is today or most
+// recently past in their zone. If that week isn't ready yet (a zone west of Hawaii), they're
+// skipped rather than sent last week's review a second time.
 
 export interface ReviewNotice<T> {
   user: T;
@@ -14,11 +14,19 @@ export interface ReviewNotice<T> {
   weekStart: DateStr;
 }
 
+// The Monday of the week ending on today's Sunday, or on the last Sunday before today.
+function endingWeek(tz: string, now: Date): DateStr {
+  const today = todayIn(tz, now);
+  const monday = weekStartOf(today);
+  return today === addDays(monday, 6) ? monday : addWeeks(monday, -1);
+}
+
 // A missing or invalid timezone counts as UTC, like elsewhere.
 export function reviewNotices<T extends { timezone: string | null }>(users: T[], now: Date): ReviewNotice<T>[] {
-  return users.map((user) => {
+  return users.flatMap((user) => {
     const tz = resolveTimezone(user);
-    return { user, tz, weekStart: defaultReviewWeek(tz, now) };
+    const weekStart = endingWeek(tz, now);
+    return isReviewReady(weekStart, tz, now) ? [{ user, tz, weekStart }] : [];
   });
 }
 

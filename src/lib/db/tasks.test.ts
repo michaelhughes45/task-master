@@ -110,7 +110,7 @@ describe("toTaskView", () => {
 });
 
 describe("queries", () => {
-  it("loads the day's week: one-off tasks in it and repeating series that started by its end", async () => {
+  it("loads the day's week: one-off tasks in it, series that started by its end and ones moved into it", async () => {
     await getDayTasks("user-1", "2026-10-28", NY);
 
     const args = findMany.mock.calls[0][0];
@@ -120,6 +120,10 @@ describe("queries", () => {
       OR: [
         { rrule: null, date: { gte: day("2026-10-26"), lte: day("2026-11-01") } },
         { rrule: { not: null }, date: { lte: day("2026-11-01") } },
+        {
+          rrule: { not: null },
+          exceptions: { some: { cancelled: false, date: { gte: day("2026-10-26"), lte: day("2026-11-01") } } },
+        },
       ],
     });
     // Completions only for the range, so a long series doesn't load its whole history.
@@ -179,6 +183,27 @@ describe("queries", () => {
     expect(await getDayTasks("user-1", "2026-10-29", NY)).toEqual([
       expect.objectContaining({ title: "Read 30 pages" }),
     ]);
+  });
+
+  it("shows an occurrence moved to before its series starts, with its completion", async () => {
+    // Daily from Tue Nov 10; the Nov 10 occurrence moved to Thu Nov 5 and ticked there.
+    findMany.mockResolvedValue([
+      {
+        ...READ,
+        date: day("2026-11-10"),
+        exceptions: [{ occurrenceDate: day("2026-11-10"), cancelled: false, title: null, date: day("2026-11-05") }],
+        completions: [],
+      },
+    ] as never);
+    findCompletions.mockResolvedValue([{ taskId: "read", ...done("2026-11-10", "2026-11-05T23:00:00Z", 20) }] as never);
+
+    const thursday = await getDayTasks("user-1", "2026-11-05", NY);
+    const counts = await getWeekDayCounts("user-1", "2026-11-05");
+
+    expect(thursday.map((t) => [t.day, t.occurrenceDate, t.done, t.doneLate])).toEqual([
+      ["2026-11-05", "2026-11-10", true, false],
+    ]);
+    expect(counts.find((c) => c.day === "2026-11-05")).toEqual({ day: "2026-11-05", done: 1, total: 1 });
   });
 
   it("loads the completion of an occurrence moved in from outside the range", async () => {

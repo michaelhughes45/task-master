@@ -614,6 +614,79 @@ describe("planEventEdit: all", () => {
   });
 });
 
+describe("a series whose start day isn't one of its weekdays", () => {
+  // Stored as starting Tuesday, Oct 27 at 7:00 AM, but repeating Mondays and Wednesdays,
+  // so the first occurrence is Wednesday, Oct 28.
+  const event = gym("FREQ=WEEKLY;BYDAY=MO,WE", { startAt: at("2026-10-27", "07:00"), endAt: at("2026-10-27", "08:00") });
+  const wed = at("2026-10-28", "07:00");
+  const mon = at("2026-11-02", "07:00");
+
+  it("this one: overrides only the Wednesday", () => {
+    const plan = planEventEdit(event, [], wed, "this", form(event, "2026-10-28", "18:00", "19:00"), NY);
+
+    expect(plan).toEqual({
+      type: "exception",
+      row: eventException(wed, { startAt: at("2026-10-28", "18:00"), endAt: at("2026-10-28", "19:00") }),
+    });
+    expect(planEventDelete(event, [], wed, "this", NY)).toEqual({
+      type: "exception",
+      row: eventException(wed, { cancelled: true }),
+    });
+  });
+
+  it("this and following on the first real occurrence is the same as all", () => {
+    const plan = planEventEdit(event, [], wed, "following", form(event, "2026-10-28", "18:00", "19:00"), NY);
+
+    expect(plan).toMatchObject({
+      type: "update",
+      data: { startAt: at("2026-10-27", "18:00"), endAt: at("2026-10-27", "19:00") },
+    });
+    if (plan.type !== "update") throw new Error("expected an update");
+    expect(startsOf({ ...event, ...plan.data, rrule: plan.data.rrule! }, "2026-10-26", "2026-11-04")).toEqual([
+      at("2026-10-28", "18:00").toISOString(),
+      at("2026-11-02", "18:00").toISOString(),
+      at("2026-11-04", "18:00").toISOString(),
+    ]);
+    expect(planEventDelete(event, [], wed, "following", NY)).toEqual({ type: "delete" });
+  });
+
+  it("this and following later on ends the old series on Wednesday, with UNTIL or COUNT", () => {
+    const plan = planEventEdit(event, [], mon, "following", form(event, "2026-11-02", "18:00", "19:00"), NY);
+
+    expect(plan).toMatchObject({
+      type: "split",
+      rule: "FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261028",
+      next: { rrule: "FREQ=WEEKLY;BYDAY=MO,WE", startAt: at("2026-11-02", "18:00") },
+    });
+    if (plan.type !== "split") throw new Error("expected a split");
+    expect(startsOf({ ...event, rrule: plan.rule }, "2026-10-26", "2026-11-08")).toEqual([wed.toISOString()]);
+
+    const counted = { ...event, rrule: "FREQ=WEEKLY;BYDAY=MO,WE;COUNT=4" };
+    expect(planEventDelete(counted, [], mon, "following", NY)).toEqual({
+      type: "end",
+      from: mon,
+      rule: "FREQ=WEEKLY;BYDAY=MO,WE;COUNT=1",
+    });
+  });
+
+  it("all: a new time keeps the Tuesday anchor, and moving the day shifts the weekdays with it", () => {
+    expect(planEventEdit(event, [], mon, "all", form(event, "2026-11-02", "06:00", "07:00"), NY)).toMatchObject({
+      type: "update",
+      data: { rrule: "FREQ=WEEKLY;BYDAY=MO,WE", startAt: at("2026-10-27", "06:00") },
+    });
+
+    // Monday's occurrence moved to Tuesday: every occurrence moves a day later.
+    const plan = planEventEdit(event, [], mon, "all", form(event, "2026-11-03", "07:00", "08:00"), NY);
+    expect(plan).toMatchObject({ type: "update", data: { rrule: "FREQ=WEEKLY;BYDAY=TU,TH" } });
+    if (plan.type !== "update") throw new Error("expected an update");
+    expect(startsOf({ ...event, ...plan.data, rrule: plan.data.rrule! }, "2026-10-26", "2026-11-05")).toEqual([
+      at("2026-10-29", "07:00").toISOString(),
+      at("2026-11-03", "07:00").toISOString(),
+      at("2026-11-05", "07:00").toISOString(),
+    ]);
+  });
+});
+
 describe("planEventDelete", () => {
   const event = gym();
   const wed = at("2026-10-28", "07:00");

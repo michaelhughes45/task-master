@@ -68,6 +68,7 @@ describe("getWeeklyReview", () => {
       OR: [
         { rrule: null, date: { gte: day("2026-10-12"), lte: day("2026-10-25") } },
         { rrule: { not: null }, date: { lte: day("2026-10-25") } },
+        { rrule: { not: null }, exceptions: { some: { cancelled: false, date: { gte: day("2026-10-12"), lte: day("2026-10-25") } } } },
       ],
     });
     expect(wheres).toContainEqual({
@@ -76,6 +77,7 @@ describe("getWeeklyReview", () => {
       OR: [
         { rrule: null, date: { gte: day("2026-10-12"), lte: day("2026-10-19") } },
         { rrule: { not: null }, date: { lte: day("2026-10-19") } },
+        { rrule: { not: null }, exceptions: { some: { cancelled: false, date: { gte: day("2026-10-12"), lte: day("2026-10-19") } } } },
       ],
     });
   });
@@ -176,6 +178,7 @@ describe("getWeekRates", () => {
         OR: [
           { rrule: null, date: { gte: day("2026-10-05"), lte: day("2026-10-25") } },
           { rrule: { not: null }, date: { lte: day("2026-10-25") } },
+          { rrule: { not: null }, exceptions: { some: { cancelled: false, date: { gte: day("2026-10-05"), lte: day("2026-10-25") } } } },
         ],
       }),
     );
@@ -214,7 +217,14 @@ describe("getReviewWeeks", () => {
       orderBy: { date: "desc" },
       take: 84,
     });
-    expect(series?.where).toEqual({ userId: "user-1", rrule: { not: null }, date: { lte: day("2026-11-01") } });
+    expect(series?.where).toEqual({
+      userId: "user-1",
+      rrule: { not: null },
+      OR: [
+        { date: { lte: day("2026-11-01") } },
+        { exceptions: { some: { cancelled: false, date: { lte: day("2026-11-01") } } } },
+      ],
+    });
   });
 
   it("is empty for a user with no tasks", async () => {
@@ -243,6 +253,22 @@ describe("getReviewWeeks", () => {
     );
 
     expect(await getReviewWeeks("user-1", NY, NOW)).toEqual(["2026-10-26", "2026-10-05", "2026-09-07", "2026-08-03"]);
+  });
+
+  it("adds the week an occurrence was moved back into, before its series starts", async () => {
+    weeksFrom(
+      [],
+      [
+        // Daily from Tue Nov 10; the Nov 10 occurrence moved to Thu Oct 29 (this week).
+        row({
+          date: day("2026-11-10"),
+          rrule: "FREQ=DAILY;COUNT=1",
+          exceptions: [{ occurrenceDate: day("2026-11-10"), cancelled: false, title: null, date: day("2026-10-29") }],
+        }),
+      ],
+    );
+
+    expect(await getReviewWeeks("user-1", NY, NOW)).toEqual(["2026-10-26"]);
   });
 
   it("returns at most 12 weeks and doesn't expand series before the 12th one-off week", async () => {

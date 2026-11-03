@@ -70,7 +70,7 @@ See [Weekly Review](#-weekly-review).
 ### E) Notifications (PWA)
 
 - Installable to the home screen on phone and desktop.
-- Web push notification on **Sunday evening**: "Your weekly review is ready." The Vercel Hobby cron runs once a week (Monday 02:00 UTC, ±59 min), which is Sunday 7–8 PM MST / 8–9 PM MDT for the owner's `America/Denver`; users in other timezones get it at a different local hour (see [Review notification flow](#-review-notification-flow)).
+- Web push notification on **Sunday evening**: "Your weekly review is ready." The Vercel Hobby cron runs once a week (Monday 05:00 UTC, ±59 min), late enough that the review is ready in every US timezone: Sunday 7–8 PM in Honolulu, 10–11 PM MST / 11 PM–midnight MDT for the owner's `America/Denver`, and Monday for zones east of that (see [Review notification flow](#-review-notification-flow)).
 - iPhone only shows web push for apps added to the Home Screen (iOS 16.4+).
 - Event reminders are a possible later addition, not in the MVP.
 
@@ -291,7 +291,7 @@ erDiagram
 | 🎨 CSS / UI | [Tailwind CSS v4](https://tailwindcss.com/docs) + [shadcn/ui](https://ui.shadcn.com/) | Icons via [Lucide](https://lucide.dev/) |
 | ✅ Validation | [Zod](https://zod.dev/) | Shared schemas for forms & server actions |
 | 🔔 Push | Web Push API + [web-push](https://github.com/web-push-libs/web-push) | Service worker, VAPID keys |
-| ⏰ Scheduled jobs | [Vercel Cron](https://vercel.com/docs/cron-jobs) | Weekly run (`0 2 * * 1` in `vercel.json`) that sends the Sunday review notification |
+| ⏰ Scheduled jobs | [Vercel Cron](https://vercel.com/docs/cron-jobs) | Weekly run (`0 5 * * 1` in `vercel.json`) that sends the Sunday review notification |
 | 🧪 Unit testing | [Vitest](https://vitest.dev/) | Server actions and utilities only, not components |
 | 🚀 Deployment | [Vercel](https://vercel.com/docs) | |
 
@@ -327,8 +327,8 @@ Next.js on Vercel ──► Prisma ──► Neon Postgres
 
 ### 🔔 Review notification flow
 
-1. Vercel Cron calls `/api/cron/review` once a week, Monday 02:00 UTC (`0 2 * * 1` in `vercel.json`), with `Authorization: Bearer $CRON_SECRET`. Vercel Hobby allows at most one run a day and fires anywhere in that hour, so there is no per-timezone window: the schedule is set for the owner's `America/Denver` (Sunday 7–8 PM MST / 8–9 PM MDT), and changing the owner's timezone means editing `vercel.json`.
-2. For each user with `reviewNotify` on and at least one subscription, send a push for their latest ready week ("You finished N of M tasks this week.", opens `/review/<weekStart>`) to each subscription.
+1. Vercel Cron calls `/api/cron/review` once a week, Monday 05:00 UTC (`0 5 * * 1` in `vercel.json`), with `Authorization: Bearer $CRON_SECRET`. Vercel Hobby allows at most one run a day and fires anywhere in that hour, so there is no per-timezone window: the run is late enough that Sunday 7 PM has passed in every zone from Honolulu (UTC-10) eastward (10–11 PM MST / 11 PM–midnight MDT for the owner's `America/Denver`).
+2. For each user with `reviewNotify` on and at least one subscription, send a push for the week that just ended in their zone (skipped if it isn't ready yet, so last week is never sent twice; UTC-11/-12 zones such as American Samoa are therefore never notified) ("You finished N of M tasks this week.", opens `/review/<weekStart>`) to each subscription.
 3. Expired subscriptions (HTTP 404/410) are deleted.
 
 ---

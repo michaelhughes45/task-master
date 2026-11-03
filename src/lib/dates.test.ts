@@ -10,6 +10,7 @@ import {
   formatDayMedium,
   formatDayShort,
   formatWeekday,
+  isInstantInRange,
   formatWeekdayLong,
   formatMinutes,
   formatMonth,
@@ -487,6 +488,21 @@ describe("isDateStr / isWallTime", () => {
     expect(isWallTime("24:00")).toBe(false);
     expect(isWallTime("9:00")).toBe(false);
     expect(isWallTime("09:60")).toBe(false);
+  });
+});
+
+describe("isInstantInRange", () => {
+  it("accepts an instant on an accepted day in any zone, even when its UTC day is outside", () => {
+    // 5 PM Dec 31, 2100 in Los Angeles; midnight Jan 1, 1970 in Kiritimati (UTC+14)
+    expect(isInstantInRange(wallTimeToInstant("2100-12-31", "17:00", "America/Los_Angeles"))).toBe(true);
+    expect(isInstantInRange(wallTimeToInstant("2100-12-31", "23:59", "Etc/GMT+12"))).toBe(true);
+    expect(isInstantInRange(wallTimeToInstant("1970-01-01", "00:00", "Pacific/Kiritimati"))).toBe(true);
+  });
+
+  it("refuses instants more than a day past the accepted days", () => {
+    expect(isInstantInRange(new Date("2101-01-02T00:00:00Z"))).toBe(false);
+    expect(isInstantInRange(new Date("1969-12-30T23:59:59Z"))).toBe(false);
+    expect(isInstantInRange(new Date("9999-11-11T23:30:00Z"))).toBe(false);
   });
 });
 

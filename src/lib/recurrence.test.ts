@@ -391,6 +391,22 @@ describe("expandEvent rules and ranges", () => {
     expect(starts(standup("FREQ=DAILY"), "2026-10-20", "2026-10-25", NY)).toEqual([]);
   });
 
+  it("skips a start day that isn't one of the rule's weekdays, also for COUNT", () => {
+    // Starts Tuesday, Oct 27, repeats Mondays and Wednesdays: Tuesday is not an occurrence.
+    const tuesday = event("2026-10-27T13:00:00Z", "2026-10-27T13:30:00Z", "FREQ=WEEKLY;BYDAY=MO,WE");
+    expect(wallStarts(tuesday, "2026-10-26", "2026-11-04", NY)).toEqual([
+      "2026-10-28 09:00",
+      "2026-11-02 09:00",
+      "2026-11-04 09:00",
+    ]);
+    expect(starts(tuesday, "2026-10-27", "2026-10-27", NY)).toEqual([]);
+    expect(wallStarts({ ...tuesday, rrule: "FREQ=WEEKLY;BYDAY=MO,WE;COUNT=3" }, "2026-10-26", "2026-11-30", NY)).toEqual([
+      "2026-10-28 09:00",
+      "2026-11-02 09:00",
+      "2026-11-04 09:00",
+    ]);
+  });
+
   it("carries the event's own fields and the original start onto each occurrence", () => {
     const [occurrence] = expandEvent({ ...standup("FREQ=DAILY"), id: "e1" }, [], "2026-10-27", "2026-10-27", NY);
     expect(occurrence).toMatchObject({

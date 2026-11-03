@@ -22,9 +22,9 @@ function runTime(request: Request) {
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
-// Weekly (vercel.json: `0 2 * * 1`, 02:00 UTC Monday = Sunday 7–8 PM in Denver; Vercel Hobby
-// allows at most one run a day). Sends "Your weekly review is ready" to every device of each
-// user with the reminder on, with the numbers of their latest ready week.
+// Weekly (vercel.json: `0 5 * * 1`, 05:00 UTC Monday = Sunday 7–8 PM in Honolulu, 10–11 PM in
+// Denver; Vercel Hobby allows at most one run a day). Sends "Your weekly review is ready" to every
+// device of each user with the reminder on, with the numbers of the week that just ended.
 export async function GET(request: Request) {
   if (!isCronAuthorized(request.headers.get("authorization"), env.CRON_SECRET)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

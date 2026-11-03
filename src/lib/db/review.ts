@@ -68,7 +68,11 @@ export async function getReviewWeeks(userId: string, tz: string, now: Date = new
       take: REVIEW_WEEKS * 7,
     }),
     prisma.task.findMany({
-      where: { userId, rrule: { not: null }, date: { lte: last } },
+      where: {
+        userId,
+        rrule: { not: null },
+        OR: [{ date: { lte: last } }, { exceptions: { some: { cancelled: false, date: { lte: last } } } }],
+      },
       select: {
         scope: true,
         date: true,
@@ -83,8 +87,11 @@ export async function getReviewWeeks(userId: string, tz: string, now: Date = new
   const known = [...weeks].sort().reverse();
   for (const task of series) {
     const date = fromDbDate(task.date);
-    const from = known.length >= REVIEW_WEEKS && known[REVIEW_WEEKS - 1] > date ? known[REVIEW_WEEKS - 1] : date;
-    for (const occurrence of expandTask({ ...task, date }, task.exceptions.map(fromDbException), from, lastDay)) {
+    const exceptions = task.exceptions.map(fromDbException);
+    // An occurrence can be moved to before the series starts.
+    const start = exceptions.reduce((min, e) => (!e.cancelled && e.date && e.date < min ? e.date : min), date);
+    const from = known.length >= REVIEW_WEEKS && known[REVIEW_WEEKS - 1] > start ? known[REVIEW_WEEKS - 1] : start;
+    for (const occurrence of expandTask({ ...task, date }, exceptions, from, lastDay)) {
       weeks.add(weekStartOf(occurrence.date));
     }
   }

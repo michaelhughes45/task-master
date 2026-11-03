@@ -33,7 +33,8 @@ export const EVENT_SELECT = {
 // Event occurrences overlapping firstDay..lastDay (inclusive) in the user's timezone, all-day
 // ones first, then by start. Timed events are compared as instants; all-day events by their
 // UTC dates, so an all-day event stays on its day whatever the timezone. Loads one-off events
-// in the range and every repeating series that started by its end, then expands them.
+// in the range, every repeating series that started by its end, and any later series with an
+// occurrence moved into the range, then expands them.
 export async function getEventsInRange(
   userId: string,
   firstDay: DateStr,
@@ -41,20 +42,19 @@ export async function getEventsInRange(
   tz: string,
 ): Promise<EventView[]> {
   const repeats = { rrule: { not: null } } satisfies Prisma.EventWhereInput;
+  const timed = { lt: dayEndInstant(lastDay, tz), gt: dayStartInstant(firstDay, tz) };
+  const allDay = { lt: toDbDate(addDays(lastDay, 1)), gt: toDbDate(firstDay) };
+  // Moved occurrences store both startAt and endAt (planEventEdit sets them together).
+  const movedInto = ({ lt, gt }: { lt: Date; gt: Date }) =>
+    ({ some: { cancelled: false, startAt: { lt }, endAt: { gt } } }) satisfies Prisma.EventExceptionListRelationFilter;
   const events = await prisma.event.findMany({
     where: {
       userId,
       OR: [
-        {
-          allDay: false,
-          startAt: { lt: dayEndInstant(lastDay, tz) },
-          OR: [{ endAt: { gt: dayStartInstant(firstDay, tz) } }, repeats],
-        },
-        {
-          allDay: true,
-          startAt: { lt: toDbDate(addDays(lastDay, 1)) },
-          OR: [{ endAt: { gt: toDbDate(firstDay) } }, repeats],
-        },
+        { allDay: false, startAt: { lt: timed.lt }, OR: [{ endAt: { gt: timed.gt } }, repeats] },
+        { allDay: true, startAt: { lt: allDay.lt }, OR: [{ endAt: { gt: allDay.gt } }, repeats] },
+        { allDay: false, ...repeats, exceptions: movedInto(timed) },
+        { allDay: true, ...repeats, exceptions: movedInto(allDay) },
       ],
     },
     select: EVENT_SELECT,

@@ -10,16 +10,28 @@ const findMany = vi.mocked(prisma.event.findMany);
 const NY = "America/New_York";
 
 // Applies the query's where clause to rows, the way Postgres would.
-type Row = { allDay: boolean; startAt: Date; endAt: Date; rrule: string | null };
-type Clause = { allDay: boolean; startAt: { lt: Date }; OR: [{ endAt: { gt: Date } }, { rrule: { not: null } }] };
+type Moved = { cancelled: boolean; startAt: Date | null; endAt: Date | null };
+type Row = { allDay: boolean; startAt: Date; endAt: Date; rrule: string | null; moved?: Moved[] };
+type Range = { lt: Date; gt: Date };
+type Clause =
+  | { allDay: boolean; startAt: { lt: Date }; OR: [{ endAt: { gt: Date } }, { rrule: { not: null } }] }
+  | {
+      allDay: boolean;
+      rrule: { not: null };
+      exceptions: { some: { cancelled: false; startAt: { lt: Date }; endAt: { gt: Date } } };
+    };
+const overlaps = (e: Moved, { lt, gt }: Range) =>
+  !e.cancelled && e.startAt !== null && e.endAt !== null && e.startAt < lt && e.endAt > gt;
 function matches(row: Row) {
   const { OR } = findMany.mock.calls[0][0]?.where as unknown as { OR: Clause[] };
-  return OR.some(
-    (clause) =>
-      clause.allDay === row.allDay &&
-      row.startAt < clause.startAt.lt &&
-      (row.endAt > clause.OR[0].endAt.gt || row.rrule !== null),
-  );
+  return OR.some((clause) => {
+    if (clause.allDay !== row.allDay) return false;
+    if ("exceptions" in clause) {
+      const { startAt, endAt } = clause.exceptions.some;
+      return row.rrule !== null && (row.moved ?? []).some((e) => overlaps(e, { lt: startAt.lt, gt: endAt.gt }));
+    }
+    return row.startAt < clause.startAt.lt && (row.endAt > clause.OR[0].endAt.gt || row.rrule !== null);
+  });
 }
 
 const timed = (startAt: string, endAt: string, rrule: string | null = null) => ({
@@ -112,7 +124,50 @@ describe("getEventsInRange query", () => {
         startAt: { lt: new Date("2026-11-02T00:00:00Z") },
         OR: [{ endAt: { gt: new Date("2026-10-26T00:00:00Z") } }, { rrule: { not: null } }],
       },
+      {
+        allDay: false,
+        rrule: { not: null },
+        exceptions: {
+          some: {
+            cancelled: false,
+            startAt: { lt: new Date("2026-11-02T05:00:00Z") },
+            endAt: { gt: new Date("2026-10-26T04:00:00Z") },
+          },
+        },
+      },
+      {
+        allDay: true,
+        rrule: { not: null },
+        exceptions: {
+          some: {
+            cancelled: false,
+            startAt: { lt: new Date("2026-11-02T00:00:00Z") },
+            endAt: { gt: new Date("2026-10-26T00:00:00Z") },
+          },
+        },
+      },
     ]);
+  });
+
+  it("loads a later series with an occurrence moved into the range", async () => {
+    await getEventsInRange("user-1", "2026-11-02", "2026-11-08", NY);
+
+    // Daily from Tue Nov 10; one occurrence moved to 9 AM Thu Nov 5 (EST)
+    const moved = (startAt: string, endAt: string, cancelled = false) => ({
+      cancelled,
+      startAt: new Date(startAt),
+      endAt: new Date(endAt),
+    });
+    const series = timed("2026-11-10T14:00:00Z", "2026-11-10T15:00:00Z", "FREQ=DAILY");
+    expect(matches({ ...series, moved: [moved("2026-11-05T14:00:00Z", "2026-11-05T15:00:00Z")] })).toBe(true);
+    // Moved elsewhere, or cancelled: still left out
+    expect(matches({ ...series, moved: [moved("2026-11-12T14:00:00Z", "2026-11-12T15:00:00Z")] })).toBe(false);
+    expect(matches({ ...series, moved: [moved("2026-11-05T14:00:00Z", "2026-11-05T15:00:00Z", true)] })).toBe(false);
+    expect(matches({ ...series, moved: [{ cancelled: false, startAt: null, endAt: null }] })).toBe(false);
+    // An all-day series moved onto Nov 8
+    const trip = allDay("2026-11-20", "2026-11-21", "FREQ=WEEKLY");
+    expect(matches({ ...trip, moved: [moved("2026-11-08T00:00:00Z", "2026-11-09T00:00:00Z")] })).toBe(true);
+    expect(matches({ ...trip, moved: [moved("2026-11-09T00:00:00Z", "2026-11-10T00:00:00Z")] })).toBe(false);
   });
 });
 
@@ -159,5 +214,28 @@ describe("getEventsInRange occurrences", () => {
       endAt: new Date("2026-10-29T15:00:00Z"),
       notes: "Short day",
     });
+  });
+
+  it("shows an occurrence moved to before its series starts", async () => {
+    // Daily 9 AM EST from Tue Nov 10; the Nov 10 occurrence moved to Thu Nov 5
+    findMany.mockResolvedValue([
+      event("stretch", timed("2026-11-10T14:00:00Z", "2026-11-10T14:30:00Z", "FREQ=DAILY"), [
+        {
+          occurrenceStart: new Date("2026-11-10T14:00:00Z"),
+          cancelled: false,
+          title: null,
+          startAt: new Date("2026-11-05T14:00:00Z"),
+          endAt: new Date("2026-11-05T14:30:00Z"),
+          notes: null,
+          location: null,
+        },
+      ]),
+    ] as never);
+
+    const events = await getEventsInRange("user-1", "2026-11-02", "2026-11-08", NY);
+
+    expect(events.map((e) => [e.key, e.startAt.toISOString()])).toEqual([
+      ["stretch@2026-11-10T14:00:00.000Z", "2026-11-05T14:00:00.000Z"],
+    ]);
   });
 });

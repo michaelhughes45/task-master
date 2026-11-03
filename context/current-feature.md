@@ -1,18 +1,27 @@
-# Current Feature
+# Current Feature: Date Review Fixes
 
-<!-- Feature name and short description -->
+Fix the 2 Medium and 2 Low findings from the 2026-11-03 `date-logic-reviewer` pass.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- **(M1) Cron runs late enough that every inhabited US zone's review is ready.** `vercel.json` cron moves from `0 2 * * 1` to `0 5 * * 1` (Monday 05:00–05:59 UTC): Honolulu 7–8 PM Sun, Anchorage 8–9 PM (winter), Los Angeles 9–10 PM, Denver 10–11 PM MST / 11 PM–midnight MDT, New York midnight–1 AM / 1–2 AM Mon, London 5–6 AM Mon, Auckland 6–7 PM Mon. `defaultReviewWeek` then returns the week that just ended in all of those zones.
+- `reviewNotices` (`src/lib/notify-schedule.ts`) never sends a stale week: if a user's latest ready week isn't the week that just ended (`weekStartOf(addDays(todayIn(tz, now), -1))`), skip them instead of resending the previous one (only UTC-11/-12, e.g. Pago Pago). Tests: at 2026-11-09T05:30Z Honolulu, Anchorage, Los Angeles, Denver, New York and Auckland all get 2026-11-02; Pago Pago is skipped; at the old 02:30Z time Los Angeles is skipped, not sent 2026-10-26.
+- Update the cron time and local-time wording in `context/project-overview.md` (Notifications, Tech Stack, Review notification flow), and anywhere else that states 02:00 UTC / Sunday 7–8 PM.
+- **(M2) Occurrences moved before a series' start still show.** `findOccurrences` in `src/lib/db/tasks.ts` and `getEventsInRange` in `src/lib/db/events.ts` also load series that have an exception moving an occurrence into the range (tasks: exception `date` within the range; events: exception `startAt`/`endAt` overlapping the range's instants). A daily series starting Tue Nov 10 with one occurrence moved to Nov 5 shows on Nov 5 in the to-dos, Today, calendar, review and sidebar counts.
+- **(L3) Occurrence edits aren't refused at the range edges.** `occurrenceStartSchema` (`src/lib/validations/events.ts`) bounds the instant by `1970-01-01T00:00Z` (minus the widest zone offset) to `2101-01-02T00:00Z` (plus it) instead of slicing its UTC day, so a 5 PM 2100-12-31 Los Angeles occurrence (2101-01-01T01:00Z) can be edited and deleted, while far-future instants are still refused before the series loads.
+- **(L4) Test coverage for a series whose start weekday isn't in BYDAY.** Event starting Tue with `BYDAY=MO,WE`: expansion skips Tuesday, and this / following / all edits behave correctly (`recurrence.test.ts`, `recurrence-edit.test.ts`). Fix any bug the tests expose.
+- Unit tests for each fix (cases from the report), `npm test`, `npm run lint` and `npm run build` pass.
 
 ## Notes
 
-<!-- Any extra notes -->
+- M1 decision (user, 2026-11-03): run the cron later so every zone gets the notification after its review is ready, rather than sending early or skipping western zones. Trade-off: the owner (Denver) now gets it at 10–11 PM MST / 11 PM–midnight MDT instead of 7–8 / 8–9 PM. Vercel Hobby still allows one run a day, ±59 min.
+- M2: no schema change needed; use a relation filter (`exceptions: { some: ... }`) in the existing `OR`. Expansion already handles moved-in occurrences; only the query filter hid them. Check `getReviewWeeks` too.
+- Run tests from `D:\...` (capital drive letter): with a lowercase `d:\` working directory every Vitest file fails to load ("Cannot read properties of undefined (reading 'config')").
+- Report the fixes back against the reviewer's findings; rerun `date-logic-reviewer` on the changed files at the end.
 
 ## History
 

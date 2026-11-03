@@ -174,6 +174,21 @@ describe("updateEventOccurrence / deleteEventOccurrence", () => {
     expect(event.findFirst).not.toHaveBeenCalled();
   });
 
+  it("accepts an occurrence on the last accepted day whose UTC day is already the next year", async () => {
+    vi.mocked(getSession).mockResolvedValue({ user: { id: "user-1", timezone: "America/Los_Angeles" } } as never);
+    // Daily 5 PM in Los Angeles from Dec 30, 2100; the Dec 31 one is 01:00 UTC Jan 1, 2101.
+    event.findFirst.mockResolvedValue({
+      ...SPANISH,
+      startAt: new Date("2100-12-31T01:00:00Z"),
+      endAt: new Date("2100-12-31T02:00:00Z"),
+      rrule: "FREQ=DAILY",
+    } as never);
+
+    const result = await deleteEventOccurrence("event-3", "2101-01-01T01:00:00.000Z", "this");
+
+    expect(result).toEqual({ success: true, data: { id: "event-3" } });
+  });
+
   it("refuses a start that isn't an occurrence, a bad instant, one-offs and other users' events", async () => {
     expect((await deleteEventOccurrence("event-3", "2026-11-12T01:00:00.000Z", "this")).success).toBe(false);
     expect((await deleteEventOccurrence("event-3", "next wednesday", "this")).success).toBe(false);

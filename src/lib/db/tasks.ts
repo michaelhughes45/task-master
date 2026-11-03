@@ -84,8 +84,9 @@ function expandRow(task: TaskRow, firstDay: DateStr, lastDay: DateStr) {
 const completionKey = (taskId: string, occurrenceDate: DateStr) => `${taskId}|${occurrenceDate}`;
 
 // Every occurrence of the user's tasks of one scope shown from firstDay to lastDay (inclusive),
-// by day, then in list order, with its completion. Loads one-off tasks in the range and every
-// repeating series that started by its end, then expands them.
+// by day, then in list order, with its completion. Loads one-off tasks in the range, every
+// repeating series that started by its end, and any later series with an occurrence moved into
+// the range, then expands them.
 export async function findOccurrences(
   userId: string,
   scope: TaskScope,
@@ -98,7 +99,12 @@ export async function findOccurrences(
     where: {
       userId,
       scope,
-      OR: [{ rrule: null, date: { gte: first, lte: last } }, { rrule: { not: null }, date: { lte: last } }],
+      OR: [
+        { rrule: null, date: { gte: first, lte: last } },
+        { rrule: { not: null }, date: { lte: last } },
+        // Only daily occurrences can be moved, so a moved date is compared as is.
+        { rrule: { not: null }, exceptions: { some: { cancelled: false, date: { gte: first, lte: last } } } },
+      ],
     },
     select: taskSelect(first, last),
     orderBy: ORDER_BY,

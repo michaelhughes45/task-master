@@ -13,14 +13,15 @@ const { GET } = await import("./route");
 
 const findMany = vi.mocked(prisma.user.findMany);
 const AUTH = { authorization: "Bearer cron-secret-0123456789" };
-// The weekly run: Monday Nov 9, 2026 at 02:00 UTC (Sunday 7 PM in Denver, 9 PM in New York)
-const RUN = "2026-11-09T02:00:00.000Z";
+// The weekly run: Monday Nov 9, 2026 at 05:00 UTC (Sunday 10 PM in Denver, 7 PM in Honolulu)
+const RUN = "2026-11-09T05:00:00.000Z";
 
 const sub = (id: string) => ({ id, endpoint: `https://push.example.com/${id}`, p256dh: "p", auth: "a" });
 const USERS = [
   { id: "denver", timezone: "America/Denver", pushSubscriptions: [sub("denver-phone"), sub("denver-laptop")] },
-  // 6 PM Sunday there: this week isn't ready yet, so the notice is about last week
-  { id: "la", timezone: "America/Los_Angeles", pushSubscriptions: [sub("la")] },
+  { id: "honolulu", timezone: "Pacific/Honolulu", pushSubscriptions: [sub("honolulu")] },
+  // 6 PM Sunday there: this week isn't ready yet, so they're skipped, not sent last week again
+  { id: "pago", timezone: "Pacific/Pago_Pago", pushSubscriptions: [sub("pago")] },
 ];
 
 function request(headers: Record<string, string> = AUTH, now = RUN) {
@@ -67,19 +68,21 @@ describe("GET /api/cron/review selection", () => {
     );
   });
 
-  it("sends to every device of every user, about their latest ready week", async () => {
+  it("sends to every device of every user whose week just ended, skipping one not ready yet", async () => {
     const response = await GET(request());
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ users: 2, sent: 4, removed: 0, failed: 0 });
+    expect(getWeeklyReview).toHaveBeenCalledTimes(2);
     expect(getWeeklyReview).toHaveBeenCalledWith("denver", "2026-11-02", "America/Denver", new Date(RUN));
-    expect(getWeeklyReview).toHaveBeenCalledWith("la", "2026-10-26", "America/Los_Angeles", new Date(RUN));
+    expect(getWeeklyReview).toHaveBeenCalledWith("honolulu", "2026-11-02", "Pacific/Honolulu", new Date(RUN));
     expect(sendPush).toHaveBeenCalledWith([sub("denver-phone"), sub("denver-laptop")], {
       title: "Your weekly review is ready",
       body: "You finished 28 of 36 tasks this week.",
       url: "/review/2026-11-02",
     });
-    expect(sendPush).toHaveBeenCalledWith([sub("la")], expect.objectContaining({ url: "/review/2026-10-26" }));
+    expect(sendPush).toHaveBeenCalledWith([sub("honolulu")], expect.objectContaining({ url: "/review/2026-11-02" }));
+    expect(sendPush).not.toHaveBeenCalledWith([sub("pago")], expect.anything());
   });
 
   it("sends nothing when no one has the reminder on", async () => {
@@ -137,7 +140,7 @@ describe("GET /api/cron/review selection", () => {
 
   it("ignores a faked time in production", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    // Wednesday Nov 4: the latest ready week is still Oct 26
+    // Wednesday Nov 4: the last Sunday ended the week of Oct 26
     vi.setSystemTime(new Date("2026-11-04T15:00:00.000Z"));
     vi.mocked(env).NODE_ENV = "production";
     try {
