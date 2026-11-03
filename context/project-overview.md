@@ -18,6 +18,7 @@
 - [Project Structure](#-project-structure)
 - [Environment Variables](#-environment-variables)
 - [Development Workflow](#️-development-workflow)
+- [Deploying](#-deploying)
 - [Screenshots](#-screenshots)
 - [Roadmap](#-roadmap)
 - [Open Questions](#-open-questions)
@@ -447,6 +448,20 @@ CRON_SECRET=
 - 🐘 Neon `development` branch for local work; `production` only for the deployed app
 - 🧪 Vitest unit tests for server actions and utilities (`npm test`), especially dates, recurrence and review math
 - ✅ `npm run build` and `npm test` must pass before committing
+
+---
+
+## 🚀 Deploying
+
+**Live:** https://taskmaster-eight-sigma.vercel.app (Vercel project `task_master`, Hobby)
+
+- Every push to `main` deploys to production. Vercel runs the `vercel-build` script (`prisma migrate deploy && next build`), so pending migrations reach the Neon `production` branch before the new code goes live; a failed migration fails the build and leaves the current deployment up.
+- Production environment variables live only in Vercel (Settings → Environment Variables, Production), never in `.env`: Neon `production` pooled `DATABASE_URL` and direct `DIRECT_URL`, its own `BETTER_AUTH_SECRET` and `CRON_SECRET`, `APP_URL` and `BETTER_AUTH_URL` = the live address, a real `VAPID_SUBJECT`. Secrets are marked Sensitive. Changing a variable needs a redeploy.
+- `DEMO_SEED_HOST` is never set in Vercel, so the demo seed can't run against production (it also refuses `NODE_ENV=production`). `migrate deploy` doesn't seed.
+- Google OAuth client: the live address is an authorized JavaScript origin and `https://taskmaster-eight-sigma.vercel.app/api/auth/callback/google` a redirect URI.
+- `EMAIL_VERIFICATION_ENABLED=false` until a sending domain is verified in Resend (follow-up); until then Resend's `onboarding@resend.dev` only delivers to the account owner's address.
+- The weekly cron in `vercel.json` shows under the project's Cron Jobs tab. Run it by hand with `curl -H "Authorization: Bearer $CRON_SECRET" https://taskmaster-eight-sigma.vercel.app/api/cron/review`.
+- Preview deployments would run `migrate deploy` against the Preview environment's `DIRECT_URL`; give Preview its own Neon branch before using them.
 
 ---
 

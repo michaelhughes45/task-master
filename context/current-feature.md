@@ -1,18 +1,41 @@
-# Current Feature
+# Current Feature: Deploy to Vercel (23)
 
-<!-- Feature name and short description -->
+Put Task Master on the internet: Vercel hosting, the Neon `production` branch, production sign-in settings and the weekly cron job, then smoke-test it on a phone and a computer.
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Vercel Production environment variables set from `.env.example`:
+  - `DATABASE_URL` / `DIRECT_URL` for the Neon **production** branch
+  - `BETTER_AUTH_SECRET` (new value, not the dev one), `BETTER_AUTH_URL` and `APP_URL` = the production address
+  - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, with the production origin and `/api/auth/callback/google` redirect added to the Google OAuth client
+  - `RESEND_API_KEY`; `EMAIL_VERIFICATION_ENABLED=false` until a sending domain is verified in Resend (follow-up)
+  - VAPID keys (with a real `VAPID_SUBJECT`) and `CRON_SECRET`
+- A `vercel-build` script runs `prisma migrate deploy` before `next build`, so production gets migrations only through Prisma
+- Better Auth `trustedOrigins` includes the production address
+- The cron job appears in Vercel's Cron Jobs tab
+- The seed never runs against production
+- `context/project-overview.md` gains the live address and a short "Deploying" section
+- Live-site checks:
+  1. Sign up with email/password and with Google; sign out and in
+  2. Create tasks and events, tick tasks, check the calendar and Today page
+  3. Install on a phone, enable the Sunday reminder, send a test notification
+  4. Trigger the cron route manually with the secret; check the logs
+  5. Lighthouse on `/today` (signed in): no major accessibility or performance issues
 
 ## Notes
 
-<!-- Any extra notes -->
+- The user does first: push the repo to GitHub (remote `michaelhughes45/task-master` already exists) and import it in Vercel; decide the address (`*.vercel.app` or a custom domain).
+- Current state: `package.json` has `build: next build` and `postinstall: prisma generate`, no `vercel-build`; `vercel.json` already has the weekly cron `0 5 * * 1`; `auth.ts` sets `baseURL` from `BETTER_AUTH_URL` but no `trustedOrigins`.
+- Seed guards already in place: refuses `NODE_ENV=production` and requires `DEMO_SEED_HOST` to equal the `DATABASE_URL` host. Don't set `DEMO_SEED_HOST` in Vercel. Check that `migrate deploy` never triggers the seed (it doesn't in Prisma 7, but confirm).
+- Neon rules from `CLAUDE.md`: never touch `production` unless the user says "production"; confirm before any write SQL there. Production schema only via `prisma migrate deploy` (includes `test_push_cooldown` and `rate_limit`).
+- Prisma CLI uses `DIRECT_URL` (`prisma.config.ts`); Vercel's build needs it set or `migrate deploy` fails.
+- Better Auth DB rate limiting keys on IP; on Vercel `x-forwarded-for` is set, so it should work per client. Check it isn't all-zeros in production.
+- Real phone install, notification click, iPhone push and live 404/410 subscription removal were untested in earlier specs; this is where they get checked.
+- References: https://vercel.com/docs/frameworks/nextjs · https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-vercel · https://www.better-auth.com/docs/reference/options#trustedorigins
 
 ## History
 

@@ -13,6 +13,8 @@ export const auth = betterAuth({
   // Email links are built from this, never from the request's Host header
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
+  // Requests from other origins are refused; baseURL's origin is always trusted too
+  trustedOrigins: env.APP_URL ? [new URL(env.APP_URL).origin] : [],
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,

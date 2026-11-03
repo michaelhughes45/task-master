@@ -83,4 +83,11 @@ describe("push and cron variables", () => {
     expect(() => parseEnv({ ...VALID, VAPID_SUBJECT: "me@example.com" })).toThrow("VAPID_SUBJECT");
     expect(() => parseEnv({ ...VALID, CRON_SECRET: "short" })).toThrow("CRON_SECRET");
   });
+
+  it("treats APP_URL as optional but rejects an invalid one", () => {
+    expect(parseEnv(VALID).APP_URL).toBeUndefined();
+    expect(parseEnv({ ...VALID, APP_URL: "" }).APP_URL).toBeUndefined();
+    expect(parseEnv({ ...VALID, APP_URL: "https://example.vercel.app" }).APP_URL).toBe("https://example.vercel.app");
+    expect(() => parseEnv({ ...VALID, APP_URL: "example.vercel.app" })).toThrow("APP_URL");
+  });
 });
