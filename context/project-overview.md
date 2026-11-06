@@ -453,7 +453,7 @@ CRON_SECRET=
 
 ## 🚀 Deploying
 
-**Live:** https://taskmaster-eight-sigma.vercel.app (Vercel project `task_master`, Hobby)
+**Live:** https://taskmaster-eight-sigma.vercel.app (Vercel project `task-master`, Hobby)
 
 - Every push to `main` deploys to production. Vercel runs the `vercel-build` script (`prisma migrate deploy && next build`), so pending migrations reach the Neon `production` branch before the new code goes live; a failed migration fails the build and leaves the current deployment up.
 - Production environment variables live only in Vercel (Settings → Environment Variables, Production), never in `.env`: Neon `production` pooled `DATABASE_URL` and direct `DIRECT_URL`, its own `BETTER_AUTH_SECRET` and `CRON_SECRET`, `APP_URL` and `BETTER_AUTH_URL` = the live address, a real `VAPID_SUBJECT`. Secrets are marked Sensitive. Changing a variable needs a redeploy.
