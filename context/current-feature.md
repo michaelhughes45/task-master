@@ -1,18 +1,25 @@
-# Current Feature
-
-<!-- Feature name and short description -->
+# Current Feature: Sort Tasks by Priority
 
 ## Status
 
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
 
-<!-- Goals and requirements -->
+- Task lists show High priority first, then Normal ("medium"), then Low.
+- Applies everywhere tasks are listed as to-dos: Today (today's daily list, this week's weekly list, "Still open from earlier") and To-dos (daily and weekly cards for any day/week).
+- Within the same priority, keep the current order (task date, then `createdAt`, i.e. the order they were added).
+- Changing a task's priority from the row menu moves it to its new place straight away (optimistic), not only after the server revalidates.
+- A newly added task (draft, `NORMAL`) appears after the High tasks and before the Low ones, and stays there once saved.
+- Ticking a task done doesn't move it (done tasks are not pushed to the bottom).
+- One shared, pure comparator (e.g. `sortByPriority` in `src/lib/task-list.ts`) with Vitest tests: High → Normal → Low, stable ties, drafts, after a priority change.
 
 ## Notes
 
-<!-- Any extra notes -->
+- Priority enum is `LOW | NORMAL | HIGH`; "medium" in the request = `NORMAL`.
+- Current order: `findOccurrences` in `src/lib/db/tasks.ts` (`ORDER_BY` = `date`, `createdAt`, then a stable sort by occurrence date). Sorting only in the query wouldn't cover optimistic priority changes and drafts, so sort the client list too (where `useTaskList`'s optimistic list is split into cards on `TodosBoard`/`TodayBoard`).
+- "Still open from earlier" spans several days with day tags: sort by day first, then priority within each day.
+- Out of scope: weekly review lists (done/missed/late stay in date order), calendar events, week strip counts.
 
 ## History
 

@@ -6,7 +6,7 @@ import { completeTask, saveCompletionDetails, uncompleteTask } from "@/actions/t
 import { deleteTaskOccurrence, updateTaskOccurrence } from "@/actions/task-occurrences";
 import { createTask, deleteTask, updateTask } from "@/actions/tasks";
 import type { EditScope } from "@/lib/recurrence-edit";
-import { applyTaskChange, draftTask, taskKey, type TaskListChange } from "@/lib/task-list";
+import { applyTaskChange, draftTask, sortByPriority, taskKey, type TaskListChange } from "@/lib/task-list";
 import type { TaskOccurrenceEditInput } from "@/lib/validations/tasks";
 import type { ActionResult } from "@/types/actions";
 import type { DateStr, TaskScope } from "@/types/dates";
@@ -21,6 +21,7 @@ export type TaskListHandlers = Omit<ReturnType<typeof useTaskList>, "tasks" | "a
 
 // Task list state with optimistic updates. The actions revalidate the page, so the server's
 // list replaces the optimistic one when they finish; a failure rolls back and shows a toast.
+// Tasks come back sorted by day, then priority, so a priority change moves the row at once.
 export function useTaskList(tasks: TaskView[], today: DateStr) {
   const [, startTransition] = useTransition();
   const [optimisticTasks, applyChange] = useOptimistic(tasks, applyTaskChange);
@@ -49,7 +50,7 @@ export function useTaskList(tasks: TaskView[], today: DateStr) {
   }
 
   return {
-    tasks: optimisticTasks,
+    tasks: sortByPriority(optimisticTasks),
     toggle(task: TaskView) {
       const done = !task.done;
       if (done) {

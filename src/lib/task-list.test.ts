@@ -7,6 +7,7 @@ import {
   isDraftTask,
   isMissed,
   isPastOccurrence,
+  sortByPriority,
   taskKey,
 } from "./task-list";
 
@@ -70,6 +71,65 @@ describe("draftTask", () => {
     expect(draft).toMatchObject({ title: "Call mum", scope: "WEEKLY", day: "2026-10-26", done: false, priority: "NORMAL" });
     expect(isDraftTask(draft)).toBe(true);
     expect(isDraftTask(task())).toBe(false);
+  });
+});
+
+describe("sortByPriority", () => {
+  const ids = (tasks: TaskView[]) => tasks.map((t) => t.id);
+
+  it("puts High first, then Normal, then Low", () => {
+    const tasks = [
+      task({ id: "low", priority: "LOW" }),
+      task({ id: "normal", priority: "NORMAL" }),
+      task({ id: "high", priority: "HIGH" }),
+    ];
+    expect(ids(sortByPriority(tasks))).toEqual(["high", "normal", "low"]);
+  });
+
+  it("keeps the incoming order within the same priority", () => {
+    const tasks = [
+      task({ id: "n1" }),
+      task({ id: "h1", priority: "HIGH" }),
+      task({ id: "n2" }),
+      task({ id: "h2", priority: "HIGH" }),
+      task({ id: "l1", priority: "LOW" }),
+      task({ id: "n3" }),
+    ];
+    expect(ids(sortByPriority(tasks))).toEqual(["h1", "h2", "n1", "n2", "n3", "l1"]);
+  });
+
+  it("does not change the list it is given", () => {
+    const tasks = [task({ id: "low", priority: "LOW" }), task({ id: "high", priority: "HIGH" })];
+    sortByPriority(tasks);
+    expect(ids(tasks)).toEqual(["low", "high"]);
+  });
+
+  it("sorts by day first, then priority within each day", () => {
+    const tasks = [
+      task({ id: "tue-low", day: "2026-10-27", priority: "LOW" }),
+      task({ id: "mon-normal", day: "2026-10-26" }),
+      task({ id: "tue-high", day: "2026-10-27", priority: "HIGH" }),
+      task({ id: "mon-high", day: "2026-10-26", priority: "HIGH" }),
+    ];
+    expect(ids(sortByPriority(tasks))).toEqual(["mon-high", "mon-normal", "tue-high", "tue-low"]);
+  });
+
+  it("places a new draft after High and Normal tasks and before Low ones", () => {
+    const tasks = [task({ id: "high", priority: "HIGH" }), task({ id: "normal" }), task({ id: "low", priority: "LOW" })];
+    const added = applyTaskChange(tasks, { type: "add", task: draftTask("x", "New", "DAILY", "2026-10-28") });
+    expect(ids(sortByPriority(added))).toEqual(["high", "normal", "draft:x", "low"]);
+  });
+
+  it("moves a task when its priority changes", () => {
+    const tasks = [task({ id: "a", priority: "HIGH" }), task({ id: "b" }), task({ id: "c", priority: "LOW" })];
+    const changed = applyTaskChange(tasks, { type: "update", id: "c", priority: "HIGH" });
+    expect(ids(sortByPriority(changed))).toEqual(["a", "c", "b"]);
+  });
+
+  it("does not move a task when it is ticked", () => {
+    const tasks = [task({ id: "a" }), task({ id: "b" })];
+    const ticked = applyTaskChange(tasks, { type: "toggle", key: "a@2026-10-28", done: true, today: "2026-10-28" });
+    expect(ids(sortByPriority(ticked))).toEqual(["a", "b"]);
   });
 });
 
