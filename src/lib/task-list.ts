@@ -61,6 +61,16 @@ export function draftTask(id: string, title: string, scope: TaskScope, day: Date
   };
 }
 
+const PRIORITY_RANK: Record<Priority, number> = { HIGH: 0, NORMAL: 1, LOW: 2 };
+
+// Lists show each day's tasks by priority, High first. The sort is stable, so tasks with the same
+// day and priority keep the order they came in (the query's creation order, drafts last).
+export function sortByPriority(tasks: TaskView[]): TaskView[] {
+  return [...tasks].sort(
+    (a, b) => a.day.localeCompare(b.day) || PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority],
+  );
+}
+
 export function isDraftTask(task: TaskView) {
   return task.id.startsWith(DRAFT_PREFIX);
 }
